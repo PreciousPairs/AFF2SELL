@@ -1,0 +1,57 @@
+import requests
+import json
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+import base64
+from urllib.parse import urljoin
+
+# Function to generate authentication headers
+def generate_auth_headers(consumerId, privateKeyPath, itemId):
+    epochTime = str(int(time.time() * 1000))
+    keyVersion = '1'
+    authString = f'{consumerId}\n{epochTime}\n{keyVersion}\n'
+    encodedAuthString = authString.encode()
+
+    # Load the private key
+    with open(privateKeyPath, 'r') as f:
+        key = RSA.importKey(f.read())
+
+    # Sign the auth string
+    hasher = SHA256.new(encodedAuthString)
+    signer = PKCS1_v1_5.new(key)
+    signature = signer.sign(hasher)
+    signature_enc = str(base64.b64encode(signature), 'utf-8')
+
+    # Construct headers
+    headers = {
+        'WM_CONSUMER.ID': consumerId,
+        'WM_CONSUMER.INTIMESTAMP': epochTime,
+        'WM_SEC.AUTH_SIGNATURE': signature_enc,
+        'WM_SEC.KEY_VERSION': keyVersion
+    }
+    return headers
+
+# Function to fetch price update for a specific item ID
+def fetch_price_update_for_item(consumerId, privateKeyPath, itemId):
+    rootURL = "https://developer.api.walmart.com"
+    itemURL = f"/api-proxy/service/affil/product/v2/items/{itemId}"
+    headers = generate_auth_headers(consumerId, privateKeyPath, itemId)
+
+    response = requests.get(urljoin(rootURL, itemURL), headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        # Handle errors or invalid responses
+        return None
+
+# Example usage
+consumerId = 'your_consumer_id_here'
+privateKeyPath = 'path_to_your_private_key.pem'
+itemId = 'specific_item_id_here'
+price_update = fetch_price_update_for_item(consumerId, privateKeyPath, itemId)
+
+if price_update:
+    print("Price update:", price_update)
+else:
+    print("Failed to fetch price update.")
