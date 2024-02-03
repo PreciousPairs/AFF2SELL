@@ -2,6 +2,21 @@ import React, { useState } from 'react';
 import { GoogleLogin } from 'react-google-login';
 import { useHistory } from 'react-router-dom';
 import './LoginPage.css'; // Assume styling for .error-message and .loading
+// Additional imports
+import { useEffect } from 'react';
+
+const LoginPage = () => {
+    // Existing implementation...
+
+    useEffect(() => {
+        // Ensure we're on a secure connection in production
+        if (window.location.protocol === 'http:' && process.env.NODE_ENV === 'production') {
+            window.location.href = window.location.href.replace('http', 'https');
+        }
+    }, []);
+
+    // Rest of your component...
+};
 
 const LoginPage = () => {
     const history = useHistory();
