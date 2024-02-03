@@ -1,0 +1,15 @@
+{
+  "_id": ObjectId(),
+  "itemId": "12345",
+  "name": "Product Name",
+  "categoryPath": "Electronics/Computers/Laptops",
+  "salePrice": 299.99,
+  "competitorPrices": [
+    {
+      "price": 289.99,
+      "shippingRate": 5.99,
+      "updatedAt": ISODate("2024-02-02T00:00:00Z")
+    }
+  ],
+  "updatedAt": ISODate("2024-02-02T00:00:00Z")
+}
