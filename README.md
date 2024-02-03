@@ -1,4 +1,3 @@
-To utilize the provided code base effectively within a GPT-4 framework, follow these structured instructions covering various aspects such as environment setup, usage of individual scripts, and integrating these components into a cohesive system. This guide assumes the context of a Walmart API interaction and Kafka messaging for a repricing system.
 
 1. Environment Setup
 Node.js and npm: Ensure Node.js and npm are installed. Use the latest LTS version for stability.
