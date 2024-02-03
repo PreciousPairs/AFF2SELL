@@ -1,5 +1,6 @@
 // auth.js
 const axios = require('axios');
+const crypto = require('crypto');
 require('dotenv').config();
 
 let accessToken = '';
@@ -32,4 +33,17 @@ async function authenticateWalmartApi() {
     }
 }
 
-module.exports = { authenticateWalmartApi };
+/**
+ * Generates the signature for the Walmart Affiliate API request.
+ */
+function generateSignature(consumerId, privateKey, keyVersion) {
+    const timestamp = Date.now().toString();
+    const dataToSign = `WM_CONSUMER.ID:${consumerId}\nWM_CONSUMER.INTIMESTAMP:${timestamp}\nWM_SEC.KEY_VERSION:${keyVersion}`;
+    const signer = crypto.createSign('RSA-SHA256');
+    signer.update(dataToSign);
+    signer.end();
+    const signature = signer.sign(privateKey, 'base64');
+    return signature;
+}
+
+module.exports = { authenticateWalmartApi, generateSignature };
