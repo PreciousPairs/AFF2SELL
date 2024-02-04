@@ -1,3 +1,8 @@
+To transition the SaaS repricer platform into a multi-tenant architecture and ensure strict adherence to comprehensive and relational scripting, a meticulously organized directory structure is essential. Below is the proposed directory structure along with a granular list of scripting tasks to be accomplished:
+
+### New Directory Structure
+
+```
 /api
   /config
     - db.ts
@@ -51,7 +56,83 @@
     - api.ts
   - _app.tsx
   - _document.tsx
-``
+```
+
+### Granular List of Scripting Tasks
+
+#### Backend (`/api`)
+
+1. **Configure Database for Multi-Tenancy (`/config/db.ts`):**
+   - Script dynamic database/schema selection based on tenant ID.
+
+2. **Set Up Kafka Consumers and Producers (`/kafka`):**
+   - Implement producer and consumer scripts for handling real-time pricing updates and competitor data.
+
+3. **Implement Authentication Middleware (`/middleware/auth.ts`):**
+   - Update authentication middleware to support multi-tenant user verification.
+
+4. **Develop Tenant Resolver Middleware (`/middleware/tenantResolver.ts`):**
+   - Create middleware to extract tenant ID from requests and set the context for subsequent operations.
+
+5. **Define Models for Core Entities (`/models`):**
+   - Create or update models to include a `tenantId` attribute where necessary.
+
+6. **Create Controllers for Business Logic (`/controllers`):**
+   - Implement controllers for handling user, product, subscription, and tenant-related operations.
+
+7. **Set Up Routes (`/routes`):**
+   - Define RESTful routes for the application, ensuring they are tenant-aware.
+
+8. **Utility Scripts (`/utils`):**
+   - Develop utility scripts for common operations like error handling and tenant validation.
+
+9. **Initialize Server (`server.ts`):**
+   - Set up Express server, integrating middleware, routes, and database connection.
+
+#### Frontend (`/src`)
+
+1. **Layout Components (`/components/layout`):**
+   - Design header and footer components that adapt based on tenant-specific customization.
+
+2. **Common Components (`/components/common`):**
+   - Implement notifier and confirmer components for user feedback.
+
+3. **Reactive Hooks (`/hooks`):**
+   - Create custom hooks like `useTenant` for managing tenant context and `useAuth` for authentication state.
+
+4. **API Utility (`/lib/api.ts`):**
+   - Develop an API utility for making HTTP requests, ensuring tenant ID is included in headers.
+
+5. **Styling (`/styles`):**
+   - Define a dynamic theme that can be customized per tenant.
+
+6. **Page Components (`/pages`):**
+   - Develop pages for login, dashboard, settings, and pricing strategy management, making them responsive and tenant-aware.
+
+### Scripting Wise To-Dos
+
+- **Database Configuration:**
+  - Implement logic in `db.ts` to connect to the appropriate database or schema based on the tenant.
+  
+- **Tenant Management:**
+  - Script in `tenantController.ts` for CRUD operations on tenants.
+  
+- **User Authentication:**
+  - Update `userController.ts` to handle multi-tenant user authentication and registration.
+  
+- **Subscription Handling:**
+  - Implement subscription logic in `subscriptionController.ts` to manage subscription tiers and statuses per tenant.
+  
+- **Pricing Strategy Logic:**
+  - Develop complex pricing strategies in `pricingController.ts`, allowing for tenant-specific rules and competitor analysis.
+  
+- **Frontend Customization:**
+  - Utilize `theme.ts` and tenant-specific settings to allow dynamic UI customization.
+
+- **API Integration:**
+  - Ensure all frontend requests in `lib/api.ts` include tenant identification.
+
+This structured approach, with clear scripting tasks, will facilitate the development of a robust, scalable multi-tenant SaaS repricer platform, ensuring comprehensive functionality and adherence to modern software architecture principles.
 for async integration saas boilerplate
  integrates with the Walmart Affiliate API for competitor data and the Walmart Seller API for authentication and seller-specific operations. MongoDB serves as the persistence layer, storing fetched data for analysis.
 
