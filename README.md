@@ -1,5 +1,4 @@
-
-This detailed README provides a comprehensive overview of integrating Kafka into your application for handling Walmart API data, covering setup, usage scenarios, and security considerations. Adjustments may be necessary based on specific operational environments or additional requirementAPIs. At its core, the application integrates with the Walmart Affiliate API for competitor data and the Walmart Seller API for authentication and seller-specific operations. MongoDB serves as the persistence layer, storing fetched data for analysis.
+ integrates with the Walmart Affiliate API for competitor data and the Walmart Seller API for authentication and seller-specific operations. MongoDB serves as the persistence layer, storing fetched data for analysis.
 
 Kafka is used as the messaging backbone to decouple data fetching from data processing and storage. This architecture choice enhances scalability, fault tolerance, and the ability to handle high volumes of data efficiently.
 
