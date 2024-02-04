@@ -1,4 +1,5 @@
 const { Kafka } = require('kafkajs');
+const kafka = new Kafka({
 const kafkaClientOptions = {
   clientId: 'saas_repricer',
   brokers: JSON.parse(process.env.KAFKA_BROKERS), // Expected as a JSON array
