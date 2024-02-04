@@ -1,3 +1,58 @@
+/api
+  /config
+    - db.ts
+    - kafkaConfig.ts
+    - passportConfig.ts
+  /controllers
+    - pricingController.ts
+    - userController.ts
+    - subscriptionController.ts
+    - tenantController.ts
+  /kafka
+    - producer.ts
+    - consumer.ts
+  /middleware
+    - auth.ts
+    - tenantResolver.ts
+  /models
+    - Product.ts
+    - User.ts
+    - Subscription.ts
+    - Tenant.ts
+    - PricingStrategy.ts
+  /routes
+    - pricingRoutes.ts
+    - userRoutes.ts
+    - subscriptionRoutes.ts
+    - tenantRoutes.ts
+  /utils
+    - errorHandler.ts
+    - validateTenant.ts
+  - server.ts
+/src
+  /components
+    /common
+      - Notifier.tsx
+      - Confirmer.tsx
+    /layout
+      - Header.tsx
+      - Footer.tsx
+  /pages
+    - LoginPage.tsx
+    - Dashboard.tsx
+    - SettingsPage.tsx
+    - PricingPage.tsx
+  /styles
+    - theme.ts
+  /hooks
+    - useTenant.ts
+    - useAuth.ts
+  /lib
+    - api.ts
+  - _app.tsx
+  - _document.tsx
+``
+for async integration saas boilerplate
  integrates with the Walmart Affiliate API for competitor data and the Walmart Seller API for authentication and seller-specific operations. MongoDB serves as the persistence layer, storing fetched data for analysis.
 
 Kafka is used as the messaging backbone to decouple data fetching from data processing and storage. This architecture choice enhances scalability, fault tolerance, and the ability to handle high volumes of data efficiently.
