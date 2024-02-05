@@ -1,11 +1,18 @@
-const User = require('../models/User');
-const sendEmail = require('../utils/sendEmail'); // Assume a utility function for sending emails
+const { sendEmail, sendSMS, sendPushNotification } = require('../utils/notificationUtils');
 
-exports.sendPriceUpdateNotification = async (productId, oldPrice, newPrice) => {
-  // Fetch users interested in price updates
-  const users = await User.find({ isSubscribedForUpdates: true });
-  users.forEach(user => {
-    // Send email notification
-    sendEmail(user.email, 'Price Update Notification', `The price of product ID ${productId} has changed from ${oldPrice} to ${newPrice}.`);
-  });
+exports.notifyUser = async (userId, message) => {
+  const user = await User.findById(userId);
+  switch (user.preferredNotificationMethod) {
+    case 'email':
+      await sendEmail(user.email, 'Notification', message);
+      break;
+    case 'sms':
+      await sendSMS(user.phone, message);
+      break;
+    case 'push':
+      await sendPushNotification(user.pushToken, message);
+      break;
+    default:
+      console.log('Unsupported notification method');
+  }
 };
