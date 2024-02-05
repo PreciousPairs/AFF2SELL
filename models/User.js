@@ -10,29 +10,23 @@ const NotificationSettingsSchema = new mongoose.Schema({
 const PreferencesSchema = new mongoose.Schema({
     notifications: NotificationSettingsSchema,
     theme: { type: String, default: 'light' },
-    const PreferencesSchema = new mongoose.Schema({
-    notifications: NotificationSettingsSchema,
-    theme: { type: String, default: 'light' }, // Default theme
-    language: { type: String, default: 'en' }, // Language preference
-    accessibility: { // Accessibility preferences
+    language: { type: String, default: 'en' },
+    accessibility: {
         highContrast: { type: Boolean, default: false },
         textToSpeech: { type: Boolean, default: false },
     },
-    contentPreferences: { // Personalized content settings
-        categories: [{ type: String }], // Preferred categories
-        tags: [{ type: String }], // Favorite tags for filtering content
+    contentPreferences: {
+        categories: [{ type: String }],
+        tags: [{ type: String }],
     },
-    privacy: { // Privacy settings
+    privacy: {
         profileVisibility: { type: String, default: 'public', enum: ['public', 'private', 'friends'] },
         dataCollectionConsent: { type: Boolean, default: true },
     },
-    dashboardLayout: { // Layout customization for user dashboard
+    dashboardLayout: {
         layoutType: { type: String, default: 'standard', enum: ['standard', 'compact', 'detailed'] },
-        widgets: [{ widgetName: String, enabled: Boolean }], // Enable/disable dashboard widgets
+        widgets: [{ widgetName: String, enabled: Boolean }],
     },
-    // Extend with additional preferences as needed
-}, { _id: false });
-
 }, { _id: false });
 
 const userSchema = new mongoose.Schema({
@@ -81,6 +75,50 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 
 userSchema.statics.findByEmailAndActive = async function (email) {
     return this.findOne({ email, accountStatus: 'active' });
+};
+
+// Create a new user
+userSchema.statics.createUser = async function (userData) {
+    try {
+        const user = new this(userData);
+        await user.save();
+        return user;
+    } catch (error) {
+        throw error;
+    }
+};
+
+// Get user by ID
+userSchema.statics.getUserById = async function (userId) {
+    try {
+        const user = await this.findById(userId);
+        if (!user) throw new Error('User not found');
+        return user;
+    } catch (error) {
+        throw error;
+    }
+};
+
+// Update user by ID
+userSchema.statics.updateUserById = async function (userId, updateData) {
+    try {
+        const user = await this.findByIdAndUpdate(userId, updateData, { new: true });
+        if (!user) throw new Error('User not found');
+        return user;
+    } catch (error) {
+        throw error;
+    }
+};
+
+// Delete user by ID
+userSchema.statics.deleteUserById = async function (userId) {
+    try {
+        const user = await this.findByIdAndDelete(userId);
+        if (!user) throw new Error('User not found');
+        return { message: 'User successfully deleted' };
+    } catch (error) {
+        throw error;
+    }
 };
 
 const User = mongoose.model('User', userSchema);
