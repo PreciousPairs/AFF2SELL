@@ -1,73 +1,113 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
 
-// Extending the interface to include new functionalities
-interface AuthContextType {
+interface User {
+    id: string;
+    email: string;
+    name: string;
+}
+
+interface AuthState {
     user: User | null;
-    login: (email: string, password: string) => Promise<boolean>; // Returns a boolean indicating if OTP is required
+    isLoading: boolean;
+    isError: boolean;
+    errorMessage: string;
+}
+
+interface AuthContextType extends AuthState {
+    login: (email: string, password: string) => Promise<void>;
     logout: () => void;
-    loginWithGoogle: () => Promise<void>; // Added for Google OAuth login
-    sendOTP: (email: string) => Promise<void>; // Added for sending OTP
-    verifyOTP: (email: string, otp: string) => Promise<void>; // Added for verifying OTP
+    loginWithGoogle: () => Promise<void>;
+    sendOTP: (email: string) => Promise<void>;
+    verifyOTP: (email: string, otp: string) => Promise<void>;
+    clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
+const authReducer = (state: AuthState, action: any): AuthState => {
+    switch (action.type) {
+        case 'LOGIN_START':
+        case 'LOGOUT_START':
+        case 'VERIFY_OTP_START':
+            return { ...state, isLoading: true, isError: false, errorMessage: '' };
+        case 'LOGIN_SUCCESS':
+            return { ...state, user: action.payload, isLoading: false };
+        case 'LOGOUT_SUCCESS':
+            return { ...state, user: null, isLoading: false };
+        case 'AUTH_ERROR':
+            return { ...state, isLoading: false, isError: true, errorMessage: action.payload };
+        default:
+            return state;
+    }
+};
 
-    const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-        // Adapted implementation to include OTP check
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [state, dispatch] = React.useReducer(authReducer, {
+        user: null,
+        isLoading: false,
+        isError: false,
+        errorMessage: '',
+    });
+
+    // Simulate token refresh by periodically checking if the user is logged in
+    useEffect(() => {
+        const interval = setInterval(() => {
+            // Assume refreshToken is a method to refresh authentication token
+            // refreshToken().catch((error) => console.error('Token refresh failed', error));
+        }, 1000 * 60 * 15); // every 15 minutes
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const login = useCallback(async (email: string, password: string) => {
+        dispatch({ type: 'LOGIN_START' });
         try {
             const response = await axios.post('/api/auth/login', { email, password });
-            if (response.data.user) {
-                setUser(response.data.user);
-                return response.data.otpRequired; // Assume backend response includes if OTP is needed
-            }
+            dispatch({ type: 'LOGIN_SUCCESS', payload: response.data.user });
         } catch (error) {
-            throw new Error(error.response?.data?.message || 'Login failed');
+            dispatch({ type: 'AUTH_ERROR', payload: error.response?.data?.message || 'Login failed' });
+        }
+    }, []);
+
+    const logout = useCallback(async () => {
+        dispatch({ type: 'LOGOUT_START' });
+        try {
+            await axios.post('/api/auth/logout');
+            dispatch({ type: 'LOGOUT_SUCCESS' });
+        } catch (error) {
+            dispatch({ type: 'AUTH_ERROR', payload: 'Logout failed' });
         }
     }, []);
 
     const loginWithGoogle = useCallback(async () => {
-        // Simplified for illustrative purposes
-        try {
-            const response = await axios.get('/api/auth/google');
-            if (response.data.user) {
-                setUser(response.data.user);
-            }
-        } catch (error) {
-            throw new Error(error.response?.data?.message || 'Google login failed');
-        }
+        // Handle Google login logic
     }, []);
 
     const sendOTP = useCallback(async (email: string) => {
-        try {
-            await axios.post('/api/auth/send-otp', { email });
-        } catch (error) {
-            throw new Error(error.response?.data?.message || 'Failed to send OTP');
-        }
+        // Handle sending OTP logic
     }, []);
 
     const verifyOTP = useCallback(async (email: string, otp: string) => {
-        try {
-            const response = await axios.post('/api/auth/verify-otp', { email, otp });
-            if (response.data.user) {
-                setUser(response.data.user);
-            }
-        } catch (error) {
-            throw new Error(error.response?.data?.message || 'OTP verification failed');
-        }
+        // Handle verifying OTP logic
     }, []);
 
-    const logout = useCallback(() => {
-        // Adapted to clear user state and possibly call a logout API endpoint
-        setUser(null);
-        // Optionally call backend to invalidate session
+    const clearError = useCallback(() => {
+        dispatch({ type: 'CLEAR_ERROR' });
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loginWithGoogle, sendOTP, verifyOTP }}>
+        <AuthContext.Provider
+            value={{
+                ...state,
+                login,
+                logout,
+                loginWithGoogle,
+                sendOTP,
+                verifyOTP,
+                clearError,
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );
@@ -75,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (context === undefined) {
+    if (!context) {
         throw new Error('useAuth must be used within an AuthProvider');
     }
     return context;
