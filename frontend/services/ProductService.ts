@@ -1,3 +1,4 @@
+// Import axios and types for handling responses and errors
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
 // Define TypeScript interfaces for product and error response
@@ -13,22 +14,28 @@ interface ErrorResponse {
     message: string;
 }
 
+// Use environment variable for API base URL
 const API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/products`;
 
-// Configuring axios globally if authentication is needed across the application
+// Axios global configuration for authentication
 axios.interceptors.request.use(config => {
-    const token = localStorage.getItem('token'); // Assuming token is stored in localStorage
+    // Retrieve the token from local storage or another state management solution
+    const token = localStorage.getItem('token');
     if (token) {
+        // Append the authorization token to every request if available
         config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
 }, error => Promise.reject(error));
 
+// Generic response handler to extract data
 const handleResponse = <T>(response: AxiosResponse<T>): T => {
     return response.data;
 };
 
+// Generic error handler to log and throw errors
 const handleError = (error: AxiosError<ErrorResponse>): never => {
+    // Log error message or a default message if the error response is not available
     console.error('API call failed:', error.response?.data?.message || error.message);
     throw new Error(error.response?.data?.message || 'API call failed');
 };
