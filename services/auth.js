@@ -7,7 +7,14 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const REFRESH_SECRET = process.env.REFRESH_SECRET;
 
 exports.login = async (email, password) => {
-  // Login logic remains the same
+exports.updateUserRole = async (userId, newRole) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+  user.role = newRole;
+  await user.save();
+};
 
   // Save or update the refresh token in the database
   let refreshTokenDoc = await RefreshToken.findOne({ userId: user.id });
@@ -32,7 +39,35 @@ exports.refreshToken = async (token) => {
   return { token: newToken };
 };
 
-// Additional method for updating user roles
+const User = require('../models/User'); // Import the User model
+
+// Assuming we have predefined roles in the system
+const VALID_ROLES = ['admin', 'user', 'editor']; // Example roles
+
 exports.updateUserRole = async (userId, newRole) => {
-  // Implementation for updating user role in the database
+  // Validate the newRole against the predefined VALID_ROLES
+  if (!VALID_ROLES.includes(newRole)) {
+    throw new Error(`Invalid role. Valid roles are: ${VALID_ROLES.join(', ')}`);
+  }
+
+  // Find the user by ID
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  // Check if the new role is different from the current role
+  if (user.role === newRole) {
+    throw new Error('User already has this role');
+  }
+
+  // Update the user's role
+  user.role = newRole;
+  await user.save();
+
+  // Optionally, log the role update or notify the user (implementation depends on system requirements)
+
+  return { message: 'User role updated successfully', userId, newRole };
+};
+
 };
