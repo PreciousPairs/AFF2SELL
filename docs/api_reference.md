@@ -558,3 +558,212 @@ Content:
 }
 ```
 *Note:* Reflecting on the system's extensibility as detailed in the files, this endpoint facilitates seamless integration with third-party services, enabling a broader ecosystem around the repricer application.
+### User Activity Tracking
+
+#### POST /api/users/{userId}/activity
+- **Description:** Logs user activity within the system, aiding in analytics and personalized user experiences.
+- **Headers:** Required: `Authorization: Bearer JWT_TOKEN_HERE`
+- **URL Parameters:** `userId` - The ID of the user performing the activity.
+- **Request Body:**
+```json
+{
+  "activity": "Viewed Dashboard",
+  "timestamp": "2024-02-02T14:30:00Z"
+}
+```
+- **Successful Response:**
+  - **Code:** 204 No Content
+
+*Note:* This endpoint, vital for understanding user interactions and enhancing the UX, wasn't explicitly documented previously.
+
+### Real-time Notifications
+
+#### WS /api/notifications/subscribe
+- **Description:** Establishes a WebSocket connection for real-time notifications to the client, such as price updates or alerts.
+- **Headers:** Required: `Authorization: Bearer JWT_TOKEN_HERE`
+
+*Note:* Implementing WebSocket support addresses the need for real-time communication with clients, a feature implied but not detailed in earlier documentation.
+
+### Product Category Management
+
+#### GET /api/categories
+- **Description:** Retrieves a list of product categories, supporting enhanced product organization and searchability.
+- **Headers:** Required: `Authorization: Bearer JWT_TOKEN_HERE`
+- **Successful Response:**
+  - **Code:** 200 OK
+  - **Content:**
+```json
+[{
+  "categoryId": "C123",
+  "name": "Electronics",
+  "description": "Electronic gadgets and devices."
+}]
+```
+
+#### POST /api/categories
+- **Description:** Adds a new product category to the system.
+- **Headers:** Required: `Authorization: Bearer JWT_TOKEN_HERE`
+- **Request Body:**
+```json
+{
+  "name": "Home Appliances",
+  "description": "Kitchen and home electronic appliances."
+}
+```
+- **Successful Response:**
+  - **Code:** 201 Created
+  - **Content:**
+```json
+{
+  "message": "Category added successfully."
+}
+```
+
+*Note:* Category management was not previously specified but is crucial for product organization and filtering.
+
+### Dynamic Feature Flags
+
+#### GET /api/features
+- **Description:** Lists all feature flags, enabling or disabling specific functionality dynamically.
+- **Headers:** Required: `Authorization: Bearer JWT_TOKEN_HERE`
+- **Successful Response:**
+  - **Code:** 200 OK
+- **Content:**
+```json
+[{
+  "featureId": "F123",
+  "name": "AdvancedAnalytics",
+  "isEnabled": true
+}]
+```
+
+#### PATCH /api/features/{featureId}
+- **Description:** Toggles a feature flag on or off.
+- **Headers:** Required: `Authorization: Bearer JWT_TOKEN_HERE`
+- **URL Parameters:** `featureId` - The ID of the feature to toggle.
+- **Request Body:**
+```json
+{
+  "isEnabled": false
+}
+```
+- **Successful Response:**
+  - **Code:** 200 OK
+  - **Content:**
+```json
+{
+  "message": "Feature flag updated successfully."
+}
+```
+
+*Note:* Dynamic feature flags allow for flexible feature deployment and A/B testing, an essential aspect of modern web applications not covered in previous documentation.
+### Environmental Configuration
+
+#### GET /api/config/environment
+- **Description:** Retrieves the current environment configuration settings, including API keys, service endpoints, and feature toggles.
+- **Headers:** Required: `Authorization: Bearer JWT_TOKEN_HERE`
+- **Successful Response:**
+  - **Code:** 200 OK
+  - **Content:**
+```json
+{
+  "environment": "production",
+  "apiKeys": {
+    "externalService": "abc123"
+  },
+  "featureToggles": {
+    "newUI": true
+  }
+}
+```
+
+#### PATCH /api/config/environment
+- **Description:** Updates environment-specific configurations, allowing dynamic adjustments without system restarts.
+- **Headers:** Required: `Authorization: Bearer JWT_TOKEN_HERE`
+- **Request Body:**
+```json
+{
+  "featureToggles": {
+    "newUI": false
+  }
+}
+```
+- **Successful Response:**
+  - **Code:** 200 OK
+  - **Content:**
+```json
+{
+  "message": "Environment configuration updated successfully."
+}
+```
+
+*Note:* These endpoints are crucial for managing runtime configurations that affect how the application operates in different environments, enhancing flexibility.
+
+### User Preferences
+
+#### GET /api/users/{userId}/preferences
+- **Description:** Fetches user-specific preferences, enabling personalized application behavior.
+- **Headers:** Required: `Authorization: Bearer JWT_TOKEN_HERE`
+- **URL Parameters:** `userId` - The ID of the user whose preferences are being retrieved.
+- **Successful Response:**
+  - **Code:** 200 OK
+  - **Content:**
+```json
+{
+  "userId": 1,
+  "preferences": {
+    "notificationSettings": {
+      "email": true,
+      "sms": false
+    },
+    "dashboardLayout": "compact"
+  }
+}
+```
+
+#### PATCH /api/users/{userId}/preferences
+- **Description:** Updates preferences for a specific user.
+- **Headers:** Required: `Authorization: Bearer JWT_TOKEN_HERE`
+- **Request Body:**
+```json
+{
+  "preferences": {
+    "dashboardLayout": "expanded"
+  }
+}
+```
+- **Successful Response:**
+  - **Code:** 200 OK
+  - **Content:**
+```json
+{
+  "message": "User preferences updated successfully."
+}
+```
+
+*Note:* Personalization through user preferences is a key aspect of enhancing user satisfaction and engagement.
+
+### Comprehensive Error Handling
+
+
+#### General Error Response
+- **Code:** 400 Bad Request | 401 Unauthorized | 403 Forbidden | 404 Not Found | 500 Internal Server Error
+- **Content:**
+```json
+{
+  "error": "Error description here",
+  "code": "SpecificErrorCode",
+  "help": "http://docs.api.com/errors/SpecificErrorCode"
+}
+```
+
+*Note:* Providing detailed error codes and descriptions, along with links to documentation for troubleshooting, significantly improves the developer experience and aids in quick resolution of issues.
+
+### API Versioning
+
+To anticipate future expansions and maintain backward compatibility, introducing API versioning is essential:
+
+#### Base Path
+- **Version 1:** `/api/v1/...`
+  
+*Note:* Versioning allows the API to evolve over time without breaking existing integrations, a critical aspect for long-term API strategy.
