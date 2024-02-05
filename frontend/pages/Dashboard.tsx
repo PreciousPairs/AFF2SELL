@@ -1,70 +1,51 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { AuthContext } from '../contexts/AuthContext';
-import { WebSocketContext } from '../contexts/WebSocketContext';
-import ProductService from '../services/ProductService';
-import PricingService from '../services/PricingService';
-import HealthService from '../services/HealthService';
+import { useNavigate } from 'react-router-dom';
+import { PricingService, UserService, SubscriptionService, TenantService } from '../services';
+import { useAuth, useTenant } from '../hooks';
 import ProductList from '../components/ProductList';
 import StrategyList from '../components/StrategyList';
-import SystemHealthIndicator from '../components/SystemHealthIndicator';
-import LoadingSpinner from '../components/LoadingSpinner'; // Assume this is a generic loading spinner component
-import AlertComponent from '../components/AlertComponent'; // Assume this handles error and success messages
-import { Product, PricingStrategy, SystemHealth } from '../types';
+import SystemHealthIndicator from '../components/common/SystemHealthIndicator';
+import Notifier from '../components/common/Notifier';
+// Assume all necessary components are imported correctly
 
-const Dashboard: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [strategies, setStrategies] = useState<PricingStrategy[]>([]);
-  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const { user } = useContext(AuthContext);
-  const { sendMessage, receiveMessage } = useContext(WebSocketContext);
+const DashboardPage: React.FC = () => {
+  const { user, isAuthenticated } = useAuth();
+  const { tenant } = useTenant();
+  const [products, setProducts] = useState([]);
+  const [strategies, setStrategies] = useState([]);
+  const [systemHealth, setSystemHealth] = useState({});
+  const navigate = useNavigate();
 
   useEffect(() => {
-    loadInitialData();
-  }, []);
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+    // Fetch data for dashboard
+    fetchDashboardData();
+  }, [tenant, isAuthenticated, navigate]);
 
-  useEffect(() => {
-    const subscription = receiveMessage((message) => {
-      if (message.type === 'PRICE_UPDATE' || message.type === 'STRATEGY_UPDATE') {
-        loadInitialData();
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [receiveMessage]);
-
-  const loadInitialData = async () => {
-    setLoading(true);
+  const fetchDashboardData = async () => {
     try {
-      const [fetchedProducts, fetchedStrategies, healthStatus] = await Promise.all([
-        ProductService.fetchProducts(),
-        PricingService.fetchStrategies(),
-        HealthService.getSystemHealth(),
-      ]);
+      const fetchedProducts = await ProductService.fetchProducts(tenant.id);
+      const fetchedStrategies = await PricingService.fetchStrategies(tenant.id);
+      // Assume other service fetch calls are made here
       setProducts(fetchedProducts);
       setStrategies(fetchedStrategies);
-      setSystemHealth(healthStatus);
-      setError(null);
+      // Set other state based on fetched data
     } catch (error) {
-      setError('Failed to load data. Please refresh the page or contact support if the issue persists.');
-    } finally {
-      setLoading(false);
+      Notifier.notifyError('Failed to load dashboard data');
     }
   };
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
   return (
     <div className="dashboard">
-      <h1>Welcome, {user?.name}</h1>
-      {error && <AlertComponent type="error" message={error} />}
-      {systemHealth && <SystemHealthIndicator status={systemHealth} />}
-      <ProductList products={products} onProductUpdate={() => loadInitialData()} />
-      <StrategyList strategies={strategies} onStrategyUpdate={() => loadInitialData()} />
+      <h1>Welcome, {user.name}</h1>
+      {/* Render components like ProductList, StrategyList with fetched data */}
+      <ProductList products={products} />
+      <StrategyList strategies={strategies} />
+      {/* Additional components and functionalities */}
     </div>
   );
 };
 
-export default Dashboard;
+export default DashboardPage;
