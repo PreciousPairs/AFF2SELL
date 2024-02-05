@@ -25,6 +25,7 @@ const App: React.FC = () => {
                                 <Route path="/login" element={<LoginPage />} />
                                 <Route path="/settings" element={<SettingsPage />} />
                                 <Route path="/pricing" element={<PricingPage />} />
+                                <Route path="/products/:productId" element={<ProductDetailPage />} />
                                 {/* Add more routes as needed */}
                             </Routes>
                         </main>
