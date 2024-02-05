@@ -1,4 +1,6 @@
+// Filename: /models/Product.js
 const mongoose = require('mongoose');
+
 const productSchema = new mongoose.Schema({
   tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: true },
   name: { type: String, required: true },
@@ -6,10 +8,7 @@ const productSchema = new mongoose.Schema({
   basePrice: { type: Number, required: true },
   currentPrice: Number,
   stockLevel: Number,
-  category: String,
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: Date,
-  }, { timestamps: true });
-const mongoose = require('mongoose');
+  category: String
+}, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);
