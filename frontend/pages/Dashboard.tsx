@@ -1,4 +1,3 @@
-// Dashboard.tsx located at /frontend/pages/Dashboard.tsx
 import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { WebSocketContext } from '../contexts/WebSocketContext';
@@ -8,29 +7,34 @@ import HealthService from '../services/HealthService';
 import ProductList from '../components/ProductList';
 import StrategyList from '../components/StrategyList';
 import SystemHealthIndicator from '../components/SystemHealthIndicator';
-import { Product, PricingStrategy, SystemHealth } from '../types'; // Assume these types are defined according to your data structure
+import LoadingSpinner from '../components/LoadingSpinner'; // Assume this is a generic loading spinner component
+import AlertComponent from '../components/AlertComponent'; // Assume this handles error and success messages
+import { Product, PricingStrategy, SystemHealth } from '../types';
 
 const Dashboard: React.FC = () => {
-  // State hooks for managing data with proper typing
   const [products, setProducts] = useState<Product[]>([]);
   const [strategies, setStrategies] = useState<PricingStrategy[]>([]);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
-
-  // Contexts for managing user and real-time data
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useContext(AuthContext);
-  const { messages } = useContext(WebSocketContext);
+  const { sendMessage, receiveMessage } = useContext(WebSocketContext);
 
-  // Effects for initial data loading and listening to WebSocket messages
   useEffect(() => {
     loadInitialData();
   }, []);
 
   useEffect(() => {
-    handleRealTimeUpdates();
-  }, [messages]);
+    const subscription = receiveMessage((message) => {
+      if (message.type === 'PRICE_UPDATE' || message.type === 'STRATEGY_UPDATE') {
+        loadInitialData();
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [receiveMessage]);
 
-  // Function to load products, strategies, and system health with error handling
   const loadInitialData = async () => {
+    setLoading(true);
     try {
       const [fetchedProducts, fetchedStrategies, healthStatus] = await Promise.all([
         ProductService.fetchProducts(),
@@ -40,30 +44,25 @@ const Dashboard: React.FC = () => {
       setProducts(fetchedProducts);
       setStrategies(fetchedStrategies);
       setSystemHealth(healthStatus);
+      setError(null);
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      // Optionally, implement a mechanism to display errors to the user
+      setError('Failed to load data. Please refresh the page or contact support if the issue persists.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Function to handle real-time updates via WebSocket
-  const handleRealTimeUpdates = () => {
-    messages.forEach((message) => {
-      // Example: Refresh data on PRICE_UPDATE messages
-      if (message.type === 'PRICE_UPDATE') {
-        loadInitialData(); // Reload data to reflect changes
-      }
-      // Additional real-time message handling can be implemented here
-    });
-  };
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div className="dashboard">
       <h1>Welcome, {user?.name}</h1>
+      {error && <AlertComponent type="error" message={error} />}
       {systemHealth && <SystemHealthIndicator status={systemHealth} />}
-      <ProductList products={products} />
-      <StrategyList strategies={strategies} />
-      {/* Additional UI components and functionalities can be added here */}
+      <ProductList products={products} onProductUpdate={() => loadInitialData()} />
+      <StrategyList strategies={strategies} onStrategyUpdate={() => loadInitialData()} />
     </div>
   );
 };
