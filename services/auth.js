@@ -65,7 +65,12 @@ exports.updateUserRole = async (userId, newRole) => {
   user.role = newRole;
   await user.save();
 
-  // Optionally, log the role update or notify the user (implementation depends on system requirements)
+ exports.logout = async (userId) => {
+  // Invalidate the refresh token
+  await RefreshToken.findOneAndRemove({ userId });
+  
+  return { message: 'Logout successful' };
+};
 
   return { message: 'User role updated successfully', userId, newRole };
 };
