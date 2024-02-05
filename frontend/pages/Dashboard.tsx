@@ -1,20 +1,23 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PricingService, UserService, SubscriptionService, TenantService } from '../services';
-import { useAuth, useTenant } from '../hooks';
+import { PricingService, ProductService, TenantService } from '../services';
+import { useAuth, useTenant, useWebSocket } from '../hooks';
 import ProductList from '../components/ProductList';
 import StrategyList from '../components/StrategyList';
 import SystemHealthIndicator from '../components/common/SystemHealthIndicator';
 import Notifier from '../components/common/Notifier';
-// Assume all necessary components are imported correctly
+import LoadingIndicator from '../components/common/LoadingIndicator'; // Assuming this component exists for loading states
 
 const DashboardPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const { tenant } = useTenant();
+  const { messages } = useWebSocket(); // Use WebSocket context for real-time updates
+  const navigate = useNavigate();
+
   const [products, setProducts] = useState([]);
   const [strategies, setStrategies] = useState([]);
   const [systemHealth, setSystemHealth] = useState({});
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true); // State to manage loading indicator
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -24,38 +27,54 @@ const DashboardPage: React.FC = () => {
     }
   }, [tenant, isAuthenticated, navigate]);
 
+  useEffect(() => {
+    // Real-time update handling
+    const healthUpdate = messages.find(msg => msg.type === 'SYSTEM_HEALTH_UPDATE');
+    if (healthUpdate) {
+      setSystemHealth(healthUpdate.status);
+    }
+  }, [messages]);
+
   const fetchDashboardData = async () => {
+    setLoading(true);
     try {
-      const fetchedProducts = await ProductService.fetchProducts(tenant.id);
-      const fetchedStrategies = await PricingService.fetchStrategies(tenant.id);
-      const healthStatus = await TenantService.getSystemHealth(tenant.id);
+      const [fetchedProducts, fetchedStrategies, healthStatus] = await Promise.all([
+        ProductService.fetchProducts(tenant.id),
+        PricingService.fetchStrategies(tenant.id),
+        TenantService.getSystemHealth(tenant.id),
+      ]);
       setProducts(fetchedProducts);
       setStrategies(fetchedStrategies);
       setSystemHealth(healthStatus);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
       Notifier.notifyError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Handlers for product and strategy selection
-  const handleProductSelect = (productId: string) => {
-    navigate(`/products/${productId}`);
-  };
-
-  const handleStrategySelect = (strategyId: string) => {
-    navigate(`/strategies/${strategyId}`);
-  };
+  if (loading) {
+    return <LoadingIndicator />;
+  }
 
   return (
     <div className="dashboard">
       <h1>Welcome, {user?.name}</h1>
-      <SystemHealthIndicator status={systemHealth} />
+      <SystemHealthIndicator status={systemHealth.status} />
       <ProductList products={products} onSelect={handleProductSelect} />
       <StrategyList strategies={strategies} onSelect={handleStrategySelect} />
-      {/* Additional components and functionalities as needed */}
+      {/* Additional UI components and functionalities */}
     </div>
   );
+
+  function handleProductSelect(productId: string) {
+    navigate(`/products/${productId}`);
+  }
+
+  function handleStrategySelect(strategyId: string) {
+    navigate(`/strategies/${strategyId}`);
+  }
 };
 
 export default DashboardPage;
