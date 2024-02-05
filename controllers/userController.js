@@ -30,6 +30,19 @@ exports.updateUserRole = async (req, res) => {
 };
 const User = require('../models/User');
 
+exports.getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find({});
+        res.json(users.map(user => ({
+            id: user._id,
+            email: user.email,
+            role: user.role
+        })));
+    } catch (error) {
+        res.status(500).send({ error: 'Failed to fetch users' });
+    }
+};
+
 exports.updateUserPreferences = async (req, res) => {
     try {
         const { userId } = req.params;
