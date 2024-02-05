@@ -1,4 +1,5 @@
 Repricer API Specification
+
 Authentication
 POST /api/auth/login
 Description: Authenticate users and provide a JWT for accessing protected routes.
