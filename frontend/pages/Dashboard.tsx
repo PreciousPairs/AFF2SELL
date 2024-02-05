@@ -6,7 +6,7 @@ import ProductList from '../components/ProductList';
 import StrategyList from '../components/StrategyList';
 import SystemHealthIndicator from '../components/common/SystemHealthIndicator';
 import Notifier from '../components/common/Notifier';
-// Assume all necessary components are imported correctly
+// Additional imports as necessary
 
 const DashboardPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -19,31 +19,40 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
+    } else {
+      fetchDashboardData();
     }
-    // Fetch data for dashboard
-    fetchDashboardData();
   }, [tenant, isAuthenticated, navigate]);
 
   const fetchDashboardData = async () => {
     try {
       const fetchedProducts = await ProductService.fetchProducts(tenant.id);
       const fetchedStrategies = await PricingService.fetchStrategies(tenant.id);
-      // Assume other service fetch calls are made here
+      const healthStatus = await TenantService.getSystemHealth(tenant.id); // Assuming TenantService can fetch system health
       setProducts(fetchedProducts);
       setStrategies(fetchedStrategies);
-      // Set other state based on fetched data
+      setSystemHealth(healthStatus);
     } catch (error) {
+      console.error('Failed to load dashboard data:', error);
       Notifier.notifyError('Failed to load dashboard data');
     }
   };
 
   return (
     <div className="dashboard">
-      <h1>Welcome, {user.name}</h1>
-      {/* Render components like ProductList, StrategyList with fetched data */}
+      <h1>Welcome, {user?.name}</h1>
+      <SystemHealthIndicator status={systemHealth} />
       <ProductList products={products} />
       <StrategyList strategies={strategies} />
-      {/* Additional components and functionalities */}
+      {/* Consider implementing onClick handlers for ProductList and StrategyList for detailed views */}
+      {// Add to DashboardPage.tsx
+const handleProductSelect = (productId: string) => {
+  navigate(`/products/${productId}`); // Assuming you have a route set up for product details
+};
+
+// In the return statement of DashboardPage
+<ProductList products={products} onSelect={handleProductSelect} />
+}
     </div>
   );
 };
