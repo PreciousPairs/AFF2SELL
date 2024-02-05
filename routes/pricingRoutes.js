@@ -1,20 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { getPricingStrategies, getPricingStrategyById, createPricingStrategy, updatePricingStrategy, deletePricingStrategy } = require('../controllers/pricingController');
+const pricingController = require('../controllers/pricingController');
+const authMiddleware = require('../middleware/authMiddleware');
 
-// Retrieve all pricing strategies
-router.get('/', getPricingStrategies);
+// Middleware to verify if the user is authenticated
+router.use(authMiddleware.verifyToken);
 
-// Retrieve a specific pricing strategy by ID
-router.get('/:strategyId', getPricingStrategyById);
-
-// Create a new pricing strategy
-router.post('/', createPricingStrategy);
-
-// Update an existing pricing strategy
-router.put('/:strategyId', updatePricingStrategy);
-
-// Delete a pricing strategy
-router.delete('/:strategyId', deletePricingStrategy);
+router.get('/', pricingController.getPricingStrategies);
+router.get('/:strategyId', pricingController.getPricingStrategyById);
+router.post('/', authMiddleware.adminRoleRequired, pricingController.createPricingStrategy);
+router.put('/:strategyId', authMiddleware.adminRoleRequired, pricingController.updatePricingStrategy);
+router.delete('/:strategyId', authMiddleware.adminRoleRequired, pricingController.deletePricingStrategy);
 
 module.exports = router;
