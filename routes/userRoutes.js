@@ -1,23 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const { getAllUsers, getUserById, createUser, updateUser, deleteUser, updateUserPreferences } = require('../controllers/userController');
+const userController = require('../controllers/userController');
+const authMiddleware = require('../middleware/authMiddleware');
 
-// Get all users
-router.get('/', getAllUsers);
+// Middleware to verify if the user is authenticated and has admin role
+router.use(authMiddleware.verifyToken);
+router.use(authMiddleware.adminRoleRequired);
 
-// Get a single user by ID
-router.get('/:userId', getUserById);
-
-// Create a new user
-router.post('/', createUser);
-
-// Update an existing user
-router.put('/:userId', updateUser);
-
-// Delete a user
-router.delete('/:userId', deleteUser);
-
-// Update user notification preferences
-router.patch('/:userId/preferences', updateUserPreferences);
+router.get('/', userController.getAllUsers);
+router.get('/:userId', userController.getUserById);
+router.post('/', userController.createUser);
+router.put('/:userId', userController.updateUser);
+router.delete('/:userId', userController.deleteUser);
 
 module.exports = router;
