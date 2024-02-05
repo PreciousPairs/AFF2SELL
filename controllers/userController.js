@@ -28,3 +28,15 @@ exports.updateUserRole = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to update user role', error: error.message });
   }
 };
+const User = require('../models/User');
+
+exports.updateUserPreferences = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { preferences } = req.body;
+        await User.findByIdAndUpdate(userId, { preferences }, { new: true });
+        res.status(200).json({ message: "User preferences updated successfully" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
