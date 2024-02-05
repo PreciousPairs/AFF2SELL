@@ -60,3 +60,19 @@ exports.logout = async (userId) => {
   await RefreshToken.findOneAndRemove({ userId });
   return { message: 'Logout successful' };
 };
+exports.register = async (email, password, role = 'user') => {
+  if (!VALID_ROLES.includes(role)) {
+    throw new Error(`Invalid role. Valid roles are: ${VALID_ROLES.join(', ')}`);
+  }
+
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    throw new Error('Email already in use');
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 12);
+  const newUser = new User({ email, passwordHash: hashedPassword, role });
+  await newUser.save();
+
+  return { message: 'Registration successful', userId: newUser.id, email: newUser.email, role: newUser.role };
+};
