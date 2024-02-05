@@ -1,6 +1,6 @@
 // /frontend/components/common/Notifier.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 type NotificationType = 'error' | 'info' | 'success';
 
@@ -26,9 +26,10 @@ const Notifier: React.FC = () => {
     }, 5000);
   };
 
-  // Expose the notify function globally or via context if needed
-  // For simplicity, we'll assume global exposure here
+  // Expose the notify function globally
   useEffect(() => {
+    // TypeScript might flag this as an error since `window` does not have `notify` property by default
+    // @ts-ignore
     window.notify = notify;
   }, []);
 
@@ -42,6 +43,9 @@ const Notifier: React.FC = () => {
     </div>
   );
 };
+
+export default Notifier;
+
 
 /* Notifier container */
 .notifier {
