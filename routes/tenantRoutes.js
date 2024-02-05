@@ -1,20 +1,34 @@
+// Filename: /routes/tenantRoutes.js
 const express = require('express');
-const router = express.Router();
+const { body, validationResult } = require('express-validator');
 const { getTenants, getTenantById, createTenant, updateTenant, deleteTenant } = require('../controllers/tenantController');
+const router = express.Router();
 
-// Get all tenants
+// Middleware for common validation errors
+const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
+
 router.get('/', getTenants);
 
-// Get a single tenant by ID
 router.get('/:tenantId', getTenantById);
 
-// Create a new tenant
-router.post('/', createTenant);
+router.post(
+  '/',
+  [body('name').notEmpty().withMessage('Tenant name is required'), handleValidationErrors],
+  createTenant
+);
 
-// Update an existing tenant
-router.put('/:tenantId', updateTenant);
+router.put(
+  '/:tenantId',
+  [body('name').optional(), handleValidationErrors],
+  updateTenant
+);
 
-// Delete a tenant
 router.delete('/:tenantId', deleteTenant);
 
 module.exports = router;
