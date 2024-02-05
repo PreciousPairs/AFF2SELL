@@ -6,7 +6,7 @@ import ProductList from '../components/ProductList';
 import StrategyList from '../components/StrategyList';
 import SystemHealthIndicator from '../components/common/SystemHealthIndicator';
 import Notifier from '../components/common/Notifier';
-// Additional imports as necessary
+// Assume all necessary components are imported correctly
 
 const DashboardPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -28,7 +28,7 @@ const DashboardPage: React.FC = () => {
     try {
       const fetchedProducts = await ProductService.fetchProducts(tenant.id);
       const fetchedStrategies = await PricingService.fetchStrategies(tenant.id);
-      const healthStatus = await TenantService.getSystemHealth(tenant.id); // Assuming TenantService can fetch system health
+      const healthStatus = await TenantService.getSystemHealth(tenant.id);
       setProducts(fetchedProducts);
       setStrategies(fetchedStrategies);
       setSystemHealth(healthStatus);
@@ -38,21 +38,22 @@ const DashboardPage: React.FC = () => {
     }
   };
 
+  // Handlers for product and strategy selection
+  const handleProductSelect = (productId: string) => {
+    navigate(`/products/${productId}`);
+  };
+
+  const handleStrategySelect = (strategyId: string) => {
+    navigate(`/strategies/${strategyId}`);
+  };
+
   return (
     <div className="dashboard">
       <h1>Welcome, {user?.name}</h1>
       <SystemHealthIndicator status={systemHealth} />
-      <ProductList products={products} />
-      <StrategyList strategies={strategies} />
-      {/* Consider implementing onClick handlers for ProductList and StrategyList for detailed views */}
-      {// Add to DashboardPage.tsx
-const handleProductSelect = (productId: string) => {
-  navigate(`/products/${productId}`); // Assuming you have a route set up for product details
-};
-
-// In the return statement of DashboardPage
-<ProductList products={products} onSelect={handleProductSelect} />
-}
+      <ProductList products={products} onSelect={handleProductSelect} />
+      <StrategyList strategies={strategies} onSelect={handleStrategySelect} />
+      {/* Additional components and functionalities as needed */}
     </div>
   );
 };
