@@ -1,6 +1,6 @@
 // controllers/pricingController.js
 const Pricing = require('../models/pricingModel'); // Mongoose model
-
+const PricingStrategy = require('../models/PricingStrategy');
 exports.updatePricing = async (req, res) => {
     try {
         const { itemId, newPrice } = req.body;
@@ -8,6 +8,21 @@ exports.updatePricing = async (req, res) => {
         res.json({ message: 'Price updated successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error updating price', error: error.message });
+    }
+};
+
+exports.getPricingStrategies = async (req, res) => {
+    try {
+        const strategies = await PricingStrategy.find({ isActive: true });
+        res.json(strategies.map(strategy => ({
+            id: strategy._id,
+            name: strategy.name,
+            criteria: strategy.criteria,
+            actions: strategy.actions,
+            isActive: strategy.isActive
+        })));
+    } catch (error) {
+        res.status(500).send({ error: 'Failed to fetch pricing strategies' });
     }
 };
 
