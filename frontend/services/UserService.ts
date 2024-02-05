@@ -1,54 +1,67 @@
-import axios from 'axios';
+import axios, { AxiosResponse, AxiosError } from 'axios';
 
 interface User {
     id: string;
-    name: string;
     email: string;
+    name: string;
     role: string;
 }
+
+interface ErrorResponse {
+    message: string;
+}
+
+const API_BASE_URL = `${process.env.REACT_APP_API_BASE_URL}/users`;
+
+const handleResponse = <T>(response: AxiosResponse<T>): T => response.data;
+
+const handleError = (error: AxiosError<ErrorResponse>): never => {
+    console.error('API call failed:', error.response?.data?.message || error.message);
+    throw new Error(error.response?.data?.message || 'API call failed');
+};
 
 const UserService = {
     async getUsers(): Promise<User[]> {
         try {
-            const response = await axios.get('/api/users');
-            return response.data;
+            const response = await axios.get<User[]>(`${API_BASE_URL}`);
+            return handleResponse(response);
         } catch (error) {
-            throw new Error('Failed to fetch users');
+            return handleError(error as AxiosError<ErrorResponse>);
         }
     },
 
     async getUserById(userId: string): Promise<User> {
         try {
-            const response = await axios.get(`/api/users/${userId}`);
-            return response.data;
+            const response = await axios.get<User>(`${API_BASE_URL}/${userId}`);
+            return handleResponse(response);
         } catch (error) {
-            throw new Error('Failed to fetch user');
+            return handleError(error as AxiosError<ErrorResponse>);
         }
     },
 
     async createUser(userData: Partial<User>): Promise<User> {
         try {
-            const response = await axios.post('/api/users', userData);
-            return response.data;
+            const response = await axios.post<User>(`${API_BASE_URL}`, userData);
+            return handleResponse(response);
         } catch (error) {
-            throw new Error('Failed to create user');
+            return handleError(error as AxiosError<ErrorResponse>);
         }
     },
 
     async updateUser(userId: string, userData: Partial<User>): Promise<User> {
         try {
-            const response = await axios.put(`/api/users/${userId}`, userData);
-            return response.data;
+            const response = await axios.put<User>(`${API_BASE_URL}/${userId}`, userData);
+            return handleResponse(response);
         } catch (error) {
-            throw new Error('Failed to update user');
+            return handleError(error as AxiosError<ErrorResponse>);
         }
     },
 
     async deleteUser(userId: string): Promise<void> {
         try {
-            await axios.delete(`/api/users/${userId}`);
+            await axios.delete<void>(`${API_BASE_URL}/${userId}`);
         } catch (error) {
-            throw new Error('Failed to delete user');
+            handleError(error as AxiosError<ErrorResponse>);
         }
     },
 };
