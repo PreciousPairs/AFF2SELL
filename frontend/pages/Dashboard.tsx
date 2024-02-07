@@ -6,7 +6,25 @@ import ProductList from '../components/ProductList';
 import StrategyList from '../components/StrategyList';
 import SystemHealthIndicator from '../components/common/SystemHealthIndicator';
 import Notifier from '../components/common/Notifier';
-import LoadingIndicator from '../components/common/LoadingIndicator'; // Assuming this component exists for loading states
+import LoadingIndicator from '../components/common/LoadingIndicator';
+
+// Assuming these interfaces are defined according to your data structure
+interface Product {
+  id: string;
+  name: string;
+  // Add other product properties
+}
+
+interface Strategy {
+  id: string;
+  name: string;
+  // Add other strategy properties
+}
+
+interface SystemHealth {
+  status: 'good' | 'warning' | 'critical';
+  // Add other system health properties
+}
 
 const DashboardPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -14,10 +32,10 @@ const DashboardPage: React.FC = () => {
   const { messages } = useWebSocket(); // Use WebSocket context for real-time updates
   const navigate = useNavigate();
 
-  const [products, setProducts] = useState([]);
-  const [strategies, setStrategies] = useState([]);
-  const [systemHealth, setSystemHealth] = useState({});
-  const [loading, setLoading] = useState(true); // State to manage loading indicator
+  const [products, setProducts] = useState<Product[]>([]);
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [systemHealth, setSystemHealth] = useState<SystemHealth>({ status: 'good' });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -25,14 +43,25 @@ const DashboardPage: React.FC = () => {
     } else {
       fetchDashboardData();
     }
-  }, [tenant, isAuthenticated, navigate]);
+  }, [tenant, isAuthenticated]);
 
   useEffect(() => {
-    // Real-time update handling
-    const healthUpdate = messages.find(msg => msg.type === 'SYSTEM_HEALTH_UPDATE');
-    if (healthUpdate) {
-      setSystemHealth(healthUpdate.status);
-    }
+    // Handle real-time updates for system health, products, and strategies
+    messages.forEach(msg => {
+      switch (msg.type) {
+        case 'SYSTEM_HEALTH_UPDATE':
+          setSystemHealth(msg.status);
+          break;
+        case 'PRODUCT_UPDATE':
+          setProducts(prev => [...prev, msg.product]); // Simplified; adjust based on actual message structure
+          break;
+        case 'STRATEGY_UPDATE':
+          setStrategies(prev => [...prev, msg.strategy]); // Simplified; adjust based on actual message structure
+          break;
+        default:
+          console.log('Unhandled message type:', msg.type);
+      }
+    });
   }, [messages]);
 
   const fetchDashboardData = async () => {
@@ -47,16 +76,14 @@ const DashboardPage: React.FC = () => {
       setStrategies(fetchedStrategies);
       setSystemHealth(healthStatus);
     } catch (error) {
+      Notifier.notifyError('Failed to load dashboard data. Please try again later.');
       console.error('Failed to load dashboard data:', error);
-      Notifier.notifyError('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return <LoadingIndicator />;
-  }
+  if (loading) return <LoadingIndicator />;
 
   return (
     <div className="dashboard">
@@ -64,7 +91,8 @@ const DashboardPage: React.FC = () => {
       <SystemHealthIndicator status={systemHealth.status} />
       <ProductList products={products} onSelect={handleProductSelect} />
       <StrategyList strategies={strategies} onSelect={handleStrategySelect} />
-      {/* Additional UI components and functionalities */}
+      {/* Consider adding a "Refresh" button to manually refresh dashboard data */}
+      <button onClick={fetchDashboardData} disabled={loading}>Refresh Data</button>
     </div>
   );
 
