@@ -1,24 +1,31 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import Notifier from '../components/common/Notifier';
+import NotifierContext from '../contexts/NotifierContext'; // Assuming you have a NotifierContext for global notifications
 
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
-    const { login, loginWithGoogle, sendOTP } = useAuth(); // Assuming loginWithGoogle and sendOTP are defined in useAuth
+    const { login, loginWithGoogle, sendOTP, verifyOTP } = useAuth(); // Ensure verifyOTP is also defined in useAuth
+    const notifier = useContext(NotifierContext); // Use NotifierContext for global notifications
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [otp, setOtp] = useState(''); // OTP state for two-factor authentication
+    const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
-    const [showOtpInput, setShowOtpInput] = useState(false); // To show OTP input after successful email/password auth
+    const [showOtpInput, setShowOtpInput] = useState(false);
 
-    const handleGoogleLogin = () => {
-        // Redirect user to Google's OAuth consent page
-        loginWithGoogle().then(() => navigate('/')).catch((error) => {
-            Notifier.notifyError('Google login failed. Please try again.');
+    const handleGoogleLogin = async () => {
+        setLoading(true);
+        try {
+            await loginWithGoogle();
+            notifier.notifySuccess('Successfully logged in with Google.');
+            navigate('/');
+        } catch (error) {
+            notifier.notifyError('Google login failed. Please try again.');
             console.error('Google login error:', error);
-        });
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSubmit = async (event: React.FormEvent) => {
@@ -27,25 +34,28 @@ const LoginPage: React.FC = () => {
 
         try {
             if (showOtpInput) {
-                // Verify OTP
-                await verifyOTP(email, otp); // Assuming verifyOTP is a method in useAuth
+                await verifyOTP(email, otp);
+                notifier.notifySuccess('OTP Verified. Login successful.');
                 navigate('/');
             } else {
-                // Perform initial login; if OTP is required, backend will indicate so
                 const otpRequired = await login(email, password);
                 if (otpRequired) {
-                    // If backend requires OTP, show OTP input field
                     setShowOtpInput(true);
-                    await sendOTP(email); // Send OTP to email or phone
+                    await sendOTP(email); // Trigger OTP sending
+                    notifier.notifyInfo('OTP sent to your email. Please enter it below.');
                 } else {
+                    notifier.notifySuccess('Login successful.');
                     navigate('/');
                 }
             }
         } catch (error) {
-            setLoading(false);
-            setShowOtpInput(false); // Reset OTP input in case of error
-            Notifier.notifyError('Login failed. Please check your credentials and try again.');
+            notifier.notifyError('Login failed. Please check your credentials and try again.');
             console.error('Login error:', error);
+        } finally {
+            setLoading(false);
+            if (!showOtpInput) {
+                setShowOtpInput(false); // Ensure OTP input is hidden upon error or successful login without OTP
+            }
         }
     };
 
@@ -54,7 +64,7 @@ const LoginPage: React.FC = () => {
             <h1>Login</h1>
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label htmlFor="email">Email</label>
+                    <label htmlFor="email">Email:</label>
                     <input
                         type="email"
                         id="email"
@@ -63,20 +73,21 @@ const LoginPage: React.FC = () => {
                         required
                     />
                 </div>
-                <div className="form-group">
-                    <label htmlFor="password">Password</label>
-                    <input
-                        type="password"
-                        id="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required={!showOtpInput}
-                        disabled={showOtpInput}
-                    />
-                </div>
+                {!showOtpInput && (
+                    <div className="form-group">
+                        <label htmlFor="password">Password:</label>
+                        <input
+                            type="password"
+                            id="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                    </div>
+                )}
                 {showOtpInput && (
                     <div className="form-group">
-                        <label htmlFor="otp">OTP</label>
+                        <label htmlFor="otp">OTP:</label>
                         <input
                             type="text"
                             id="otp"
@@ -89,9 +100,11 @@ const LoginPage: React.FC = () => {
                 <button type="submit" disabled={loading}>
                     {loading ? 'Processing...' : showOtpInput ? 'Verify OTP' : 'Login'}
                 </button>
-                <button type="button" onClick={handleGoogleLogin} disabled={loading}>
-                    Sign in with Google
-                </button>
+                {!showOtpInput && (
+                    <button type="button" onClick={handleGoogleLogin} disabled={loading}>
+                        Sign in with Google
+                    </button>
+                )}
             </form>
         </div>
     );
