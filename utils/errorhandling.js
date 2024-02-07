@@ -24,5 +24,8 @@ async function handleProcessingError(priceInfo, error) {
         await moveToDLQ(priceInfo); // Function to move the message to a Dead Letter Queue for further investigation
     }
 }
-
+export const errorHandler = (error: Error, customMessage: string = 'An error occurred'): void => {
+  logger.error(`${customMessage}: ${error.message}`);
+  // Further actions like sending error details to a monitoring service can be added here
+};
 module.exports = { handleProcessingError };
