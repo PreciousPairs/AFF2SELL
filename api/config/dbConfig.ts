@@ -1,10 +1,9 @@
-// EnhancedDbConfig.ts
 import { MongoClient } from 'mongodb';
-import mongoose from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 // Import your models here
-import UserModel from './models/User';
-import ProductModel from './models/Product';
+import UserModel, { UserDocument } from './models/User';
+import ProductModel, { ProductDocument } from './models/Product';
 // Import any other models as needed
 
 class EnhancedDbConfig {
@@ -27,41 +26,45 @@ class EnhancedDbConfig {
 
     public static async getMongoClientInstance(): Promise<MongoClient> {
         if (!this.mongoClientInstance) {
-            this.mongoClientInstance = new MongoClient(this.connectionString, this.mongoOptions);
-            await this.mongoClientInstance.connect().catch((err) => {
-                console.error('Failed to connect to MongoDB using MongoClient', err);
+            try {
+                this.mongoClientInstance = new MongoClient(this.connectionString, this.mongoOptions);
+                await this.mongoClientInstance.connect();
+                console.log('MongoDB connected successfully with MongoClient.');
+            } catch (error) {
+                console.error('Failed to connect to MongoDB using MongoClient', error);
                 process.exit(1);
-            });
-            console.log('MongoDB connected successfully with MongoClient.');
+            }
         }
         return this.mongoClientInstance;
     }
 
     public static async getMongooseConnection(): Promise<typeof mongoose> {
         if (!this.mongooseConnection) {
-            this.mongooseConnection = await mongoose.connect(this.connectionString, this.mongooseOptions).catch((err) => {
-                console.error('Failed to connect to MongoDB using Mongoose', err);
+            try {
+                this.mongooseConnection = await mongoose.connect(this.connectionString, this.mongooseOptions);
+                console.log('MongoDB connected successfully with Mongoose.');
+
+                // Mongoose connection events
+                mongoose.connection.on('error', (err) => {
+                    console.error(`MongoDB connection error through Mongoose: ${err}`);
+                });
+
+                mongoose.connection.on('disconnected', () => {
+                    console.log('MongoDB disconnected');
+                });
+
+                process.on('SIGINT', async () => {
+                    await mongoose.connection.close();
+                    console.log('MongoDB disconnected through app termination');
+                    process.exit(0);
+                });
+
+                // Initialize models
+                this.initializeModels();
+            } catch (error) {
+                console.error('Failed to connect to MongoDB using Mongoose', error);
                 process.exit(1);
-            });
-            console.log('MongoDB connected successfully with Mongoose.');
-
-            // Mongoose connection events
-            mongoose.connection.on('error', (err) => {
-                console.error(`MongoDB connection error through Mongoose: ${err}`);
-            });
-
-            mongoose.connection.on('disconnected', () => {
-                console.log('MongoDB disconnected');
-            });
-
-            process.on('SIGINT', async () => {
-                await mongoose.connection.close();
-                console.log('MongoDB disconnected through app termination');
-                process.exit(0);
-            });
-
-            // Initialize models
-            this.initializeModels();
+            }
         }
         return this.mongooseConnection;
     }
@@ -75,17 +78,25 @@ class EnhancedDbConfig {
 
     public static async closeConnections(): Promise<void> {
         if (this.mongoClientInstance) {
-            await this.mongoClientInstance.close();
+            try {
+                await this.mongoClientInstance.close();
+                console.log('MongoClient connection closed.');
+            } catch (error) {
+                console.error('Failed to close MongoClient connection', error);
+            }
             this.mongoClientInstance = null;
-            console.log('MongoClient connection closed.');
         }
         if (this.mongooseConnection) {
-            await mongoose.connection.close();
+            try {
+                await mongoose.connection.close();
+                console.log('Mongoose connection closed.');
+            } catch (error) {
+                console.error('Failed to close Mongoose connection', error);
+            }
             this.mongooseConnection = null;
-            console.log('Mongoose connection closed.');
         }
     }
 }
 
 export default EnhancedDbConfig;
-export { User, Product }; // Export initialized models for easy access
+export { UserDocument, ProductDocument }; // Export initialized models for easy access
