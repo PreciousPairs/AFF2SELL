@@ -1,0 +1,31 @@
+/* /frontend/components/ProductList.css */
+.product-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+.product-item {
+  cursor: pointer;
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.product-item:hover {
+  background-color: #f0f0f0;
+}
+
+.product-item.active {
+  color: #2c3e50;
+}
+
+.product-item.inactive {
+  color: #95a5a6;
+}
+
+.out-of-stock {
+  color: #e74c3c;
+  font-weight: bold;
+}
