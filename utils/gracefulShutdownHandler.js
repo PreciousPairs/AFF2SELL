@@ -1,11 +1,13 @@
-module.exports = function(consumerOrProducer, logger, serviceName) {
+const { logInfo, logError } = require('./logger');
+
+module.exports = (services, serviceName) => {
     const shutdown = async () => {
-        logger.info(`${serviceName} is shutting down.`);
+        logInfo(`${serviceName} is initiating a graceful shutdown.`);
         try {
-            await consumerOrProducer.disconnect();
-            logger.info(`${serviceName} successfully disconnected.`);
+            await Promise.all(services.map(service => service.disconnect()));
+            logInfo(`${serviceName} has successfully disconnected.`);
         } catch (error) {
-            logger.error(`Error during ${serviceName} shutdown:`, error);
+            logError(`Error during ${serviceName} shutdown:`, error);
         } finally {
             process.exit(0);
         }
