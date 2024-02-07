@@ -13,3 +13,5 @@ const useNotifications = () => {
 
     return { notifications, addNotification, removeNotification };
 };
+
+export default useNotifications;
