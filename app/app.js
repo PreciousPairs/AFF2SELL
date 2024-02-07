@@ -1,4 +1,6 @@
-require('dotenv').config(); // Load environment variables from .env file at the beginning
+// Load environment variables from .env file at the beginning
+require('dotenv').config();
+
 const express = require('express');
 const helmet = require('helmet'); // Security middleware for setting various HTTP headers
 const cors = require('cors'); // Middleware to enable CORS
