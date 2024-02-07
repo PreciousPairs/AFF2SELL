@@ -1,4 +1,54 @@
-// routes/analyticsRoutes.js
+const Dashboard = require('../models/Dashboard');
+
+// Retrieve dashboard data
+exports.getDashboardData = async (req, res) => {
+  try {
+    const dashboardData = await Dashboard.findOne({ userId: req.user.id });
+    if (!dashboardData) {
+      return res.status(404).json({ success: false, message: 'Dashboard data not found' });
+    }
+    res.status(200).json({ success: true, dashboardData });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to retrieve dashboard data', error: error.message });
+  }
+};
+
+// Update dashboard data
+exports.updateDashboardData = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const updates = req.body;
+
+    // Perform the update and return the updated dashboard data
+    const updatedDashboardData = await Dashboard.findOneAndUpdate({ userId }, updates, { new: true });
+
+    if (!updatedDashboardData) {
+      return res.status(404).json({ success: false, message: 'Dashboard data not found' });
+    }
+
+    res.status(200).json({ success: true, message: 'Dashboard data updated successfully', updatedDashboardData });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to update dashboard data', error: error.message });
+  }
+};
+
+// Delete dashboard data
+exports.deleteDashboardData = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Delete the dashboard data
+    const deletedDashboardData = await Dashboard.findOneAndDelete({ userId });
+
+    if (!deletedDashboardData) {
+      return res.status(404).json({ success: false, message: 'Dashboard data not found' });
+    }
+
+    res.status(200).json({ success: true, message: 'Dashboard data deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to delete dashboard data', error: error.message });
+  }
+};// routes/analyticsRoutes.js
 const express = require('express');
 const router = express.Router();
 const { generateProductReport, generateActivityLogReport } = require('../services/analyticsService');
