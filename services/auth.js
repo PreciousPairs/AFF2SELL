@@ -60,6 +60,7 @@ exports.logout = async (userId) => {
   await RefreshToken.findOneAndRemove({ userId });
   return { message: 'Logout successful' };
 };
+
 exports.register = async (email, password, role = 'user') => {
   if (!VALID_ROLES.includes(role)) {
     throw new Error(`Invalid role. Valid roles are: ${VALID_ROLES.join(', ')}`);
