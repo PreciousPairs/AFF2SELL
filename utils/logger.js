@@ -1,113 +1,67 @@
-// Load environment variables from .env file
-require('dotenv').config();
-
-// Import necessary modules
-const { Kafka, CompressionTypes, logLevel } = require('kafkajs');
+// logger.js
 const { createLogger, transports, format } = require('winston');
-const retry = require('async-retry');
-const fetchCompetitorPrices = require('./services/fetchCompetitorPrices');
-const { determineTopic, validateSchema, getSchema } = require('./utils/kafkaHelpers');
-const { gracefulShutdown } = require('./utils/gracefulShutdown');
-const PrometheusMetrics = require('./monitoring/PrometheusMetrics');
+require('dotenv').config();
+const Prometheus = require('prom-client');
 
-// Initialize Kafka producer
-const kafkaConfig = {
-    clientId: 'pricing-service',
-    brokers: process.env.KAFKA_BROKERS.split(','),
-    ssl: {
-        rejectUnauthorized: process.env.KAFKA_SSL === 'true',
-        // Additional SSL configurations as necessary
-    },
-    sasl: process.env.KAFKA_SASL_USERNAME ? {
-        mechanism: 'plain', // Consider 'scram-sha-256' or 'scram-sha-512' for enhanced security
-        username: process.env.KAFKA_SASL_USERNAME,
-        password: process.env.KAFKA_SASL_PASSWORD,
-    } : undefined,
-    logLevel: logLevel.INFO,
+// Configure Prometheus to collect metrics
+const counter = new Prometheus.Counter({
+  name: 'log_messages_total',
+  help: 'Total number of log messages',
+  labelNames: ['level'],
+});
+
+// Determine the environment to adjust logging levels and transports
+const environment = process.env.NODE_ENV || 'development';
+const isProduction = environment === 'production';
+
+// Define custom logging levels
+const levels = {
+  error: 0,
+  warn: 1,
+  info: 2,
+  http: 3,
+  verbose: 4,
+  debug: 5,
+  silly: 6
 };
 
-const kafka = new Kafka(kafkaConfig);
-const producer = kafka.producer();
+// Custom format combining timestamp, label, level, and message
+const logFormat = format.combine(
+  format.label({ label: 'pricing-service' }),
+  format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  format.printf(info => `${info.timestamp} [${info.label}] ${info.level}: ${info.message}`),
+  format.colorize({ all: !isProduction }),
+);
 
-// Initialize Winston logger for logging
+// Define transports based on the environment
+const loggerTransports = [
+  new transports.Console({
+    level: isProduction ? 'warn' : 'debug', // More verbose logging in non-production environments
+  }),
+  // In production, additionally log to a file system or external logging service
+  ...(isProduction ? [new transports.File({ filename: 'logs/error.log', level: 'error' })] : []),
+];
+
+// Create the Winston logger
 const logger = createLogger({
-    level: 'info',
-    format: format.combine(
-        format.timestamp(),
-        format.json()
-    ),
-    transports: [
-        new transports.Console(),
-        new transports.File({ filename: 'pricing-service.log' }),
-    ],
+  levels,
+  format: logFormat,
+  transports: loggerTransports,
 });
 
-// Initialize Prometheus metrics for monitoring
-const metrics = new PrometheusMetrics('pricing_service_metrics');
-
-// Function to fetch and publish competitor prices to Kafka
-async function fetchAndPublishPrices() {
-    // Connect to Kafka producer
-    await producer.connect();
-    logger.info('Kafka producer connected.');
-    metrics.kafkaConnectionInc();
-
-    // Fetch competitor prices with retry mechanism
-    const prices = await retry(async () => {
-        const fetchedPrices = await fetchCompetitorPrices();
-        if (!fetchedPrices.length) throw new Error('No prices fetched, retrying...');
-        return fetchedPrices.map(price => {
-            if (!validateSchema(price, getSchema('priceSchema'))) {
-                throw new Error('Price data schema validation failed');
-            }
-            return price;
-        });
-    }, {
-        retries: 5,
-        minTimeout: 1000,
-        maxTimeout: 5000,
-        onRetry: (error, attemptNumber) => {
-            logger.warn(`Retry ${attemptNumber} for fetching prices. Error: ${error.message}`);
-            metrics.fetchRetryInc();
-        },
-    });
-export const logger = {
-  info: (message: string, ...optionalParams: any[]) => console.log(message, ...optionalParams),
-  error: (message: string, ...optionalParams: any[]) => console.error(message, ...optionalParams),
-  warn: (message: string, ...optionalParams: any[]) => console.warn(message, ...optionalParams),
-};
-
-    // Determine the Kafka topic for publishing prices
-    const topic = determineTopic(prices);
-
-    // Prepare messages for publishing to Kafka
-    const messages = prices.map(price => ({
-        value: JSON.stringify(price),
-        // Optionally add key or headers for advanced use cases
-    }));
-
-    // Publish messages to Kafka topic
-    await producer.send({
-        topic,
-        messages,
-        compression: CompressionTypes.GZIP,
-    });
-
-    logger.info(`Published ${messages.length} price updates to Kafka topic ${topic}.`);
-    metrics.messagesPublishedInc(messages.length);
-
-    // Disconnect from Kafka producer
-    await producer.disconnect();
-    logger.info('Kafka producer disconnected.');
-    metrics.kafkaDisconnectionInc();
-}
-
-// Setup graceful shutdown on SIGINT and SIGTERM signals
-gracefulShutdown(producer, logger);
-
-// Fetch and publish prices, handle errors
-fetchAndPublishPrices().catch(error => {
-    logger.error('Failed to fetch and publish competitor prices:', error);
-    metrics.errorInc();
-    process.exit(1);
+// Enhance logger methods to increment Prometheus counters
+Object.keys(levels).forEach(level => {
+  const originalMethod = logger[level];
+  logger[level] = (message, ...meta) => {
+    counter.inc({ level });
+    originalMethod.call(logger, message, ...meta);
+  };
 });
+
+// Export the enhanced logger
+module.exports = logger;
+
+// Example of using the logger
+// const logger = require('./logger');
+// logger.info('Informational message');
+// logger.error('Error message');
