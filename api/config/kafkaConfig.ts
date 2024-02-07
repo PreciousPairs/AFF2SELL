@@ -1,5 +1,6 @@
+// Kafka configuration
 const { Kafka } = require('kafkajs');
-const kafka = new Kafka({
+
 const kafkaClientOptions = {
   clientId: 'saas_repricer',
   brokers: JSON.parse(process.env.KAFKA_BROKERS), // Expected as a JSON array
@@ -10,4 +11,5 @@ const kafkaClientOptions = {
     password: process.env.KAFKA_PASSWORD
   }
 };
+
 const kafka = new Kafka(kafkaClientOptions);
