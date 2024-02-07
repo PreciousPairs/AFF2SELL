@@ -1,90 +1,113 @@
 // Load environment variables from .env file
 require('dotenv').config();
 
-// Import Kafka library for interacting with Kafka
-const { Kafka, logLevel, CompressionTypes } = require('kafkajs');
-
-// Import the function to fetch competitor prices
-const fetchCompetitorPrices = require('./fetchCompetitorPrices');
-
-// Import the Winston library for logging
+// Import necessary modules
+const { Kafka, CompressionTypes, logLevel } = require('kafkajs');
 const { createLogger, transports, format } = require('winston');
+const retry = require('async-retry');
+const fetchCompetitorPrices = require('./services/fetchCompetitorPrices');
+const { determineTopic, validateSchema, getSchema } = require('./utils/kafkaHelpers');
+const { gracefulShutdown } = require('./utils/gracefulShutdown');
+const PrometheusMetrics = require('./monitoring/PrometheusMetrics');
 
-// Import async-retry for retry mechanism
-const { retry } = require('async-retry');
+// Kafka client configuration
+const kafkaConfig = {
+  clientId: 'pricing-service',
+  brokers: process.env.KAFKA_BROKERS.split(','),
+  ssl: {
+    rejectUnauthorized: process.env.KAFKA_SSL === 'true',
+    // Additional SSL configurations as necessary
+  },
+  sasl: process.env.KAFKA_SASL_USERNAME ? {
+    mechanism: 'plain', // Consider 'scram-sha-256' or 'scram-sha-512' for enhanced security
+    username: process.env.KAFKA_SASL_USERNAME,
+    password: process.env.KAFKA_SASL_PASSWORD,
+  } : undefined,
+  logLevel: logLevel.INFO,
+};
 
-// Initialize Kafka Producer
-const kafka = new Kafka({
-    clientId: 'pricing-service', // Client ID for identification
-    brokers: process.env.KAFKA_BROKERS.split(','), // Kafka broker list
-    ssl: process.env.KAFKA_SSL === 'true', // SSL enabled flag
-    sasl: process.env.KAFKA_SASL_USERNAME ? { // SASL authentication if provided
-        mechanism: 'plain',
-        username: process.env.KAFKA_SASL_USERNAME,
-        password: process.env.KAFKA_SASL_PASSWORD
-    } : undefined,
-    logLevel: logLevel.INFO, // Set log level
-});
-
-const producer = kafka.producer(); // Create Kafka producer instance
+// Initialize Kafka client and producer
+const kafka = new Kafka(kafkaConfig);
+const producer = kafka.producer();
 
 // Initialize Winston logger
 const logger = createLogger({
-    level: 'info',
-    format: format.combine(
-        format.timestamp(),
-        format.json()
-    ),
-    transports: [
-        new transports.Console(),
-        new transports.File({ filename: 'error.log', level: 'error' }),
-        new transports.File({ filename: 'combined.log' })
-    ]
+  level: 'info',
+  format: format.combine(format.timestamp(), format.json()),
+  transports: [
+    new transports.Console(),
+    new transports.File({ filename: 'pricing-service.log' }),
+  ],
 });
 
-/**
- * Function to fetch competitor prices and publish to Kafka with retry mechanism
- */
+// Initialize Prometheus metrics
+const metrics = new PrometheusMetrics('pricing_service_metrics');
+
+// Async function to fetch competitor prices and publish to Kafka
 async function fetchAndPublishPrices() {
-    try {
-        await producer.connect(); // Connect to Kafka broker
-        logger.info('Producer connected to Kafka.');
+  await producer.connect();
+  logger.info('Kafka producer connected.');
+  metrics.kafkaConnectionInc();
 
-        const prices = await fetchCompetitorPrices(); // Fetch competitor prices
-        const messages = prices.map(priceInfo => ({
-            value: JSON.stringify(priceInfo),
-        }));
+  // Fetch competitor prices with retry logic
+  const prices = await retry(async () => {
+    const fetchedPrices = await fetchCompetitorPrices();
+    if (!fetchedPrices.length) throw new Error('No prices fetched, retrying...');
+    return fetchedPrices.map(price => {
+      if (!validateSchema(price, getSchema('priceSchema'))) {
+        throw new Error('Price data schema validation failed');
+      }
+      return price;
+    });
+  }, {
+    retries: 5,
+    minTimeout: 1000,
+    maxTimeout: 5000,
+    onRetry: (error, attemptNumber) => {
+      logger.warn(`Retry ${attemptNumber} for fetching prices. Error: ${error.message}`);
+      metrics.fetchRetryInc();
+    },
+  });
 
-        // Publish messages to the 'competitor-prices' topic with compression
-        await producer.send({
-            topic: 'competitor-prices',
-            messages: messages,
-            compression: CompressionTypes.GZIP, // Add compression for messages
-        });
+  // Determine topic based on fetched prices
+  const topic = determineTopic(prices);
 
-        logger.info(`${messages.length} competitor prices published to Kafka.`);
-    } catch (error) {
-        logger.error('Error in fetching/publishing competitor prices:', { error });
-        throw error; // Rethrow error for centralized error handling
-    } finally {
-        await producer.disconnect(); // Disconnect from Kafka broker
-    }
+  // Prepare messages for publishing to Kafka
+  const messages = prices.map(price => ({
+    value: JSON.stringify(price),
+    // Optionally add key or headers for advanced use cases
+  }));
+
+  // Publish messages to Kafka topic
+  await producer.send({
+    topic,
+    messages,
+    compression: CompressionTypes.GZIP,
+  });
+
+  // Log success and update metrics
+  logger.info(`Published ${messages.length} price updates to Kafka topic ${topic}.`);
+  metrics.messagesPublishedInc(messages.length);
+
+  // Disconnect Kafka producer
+  await producer.disconnect();
+  logger.info('Kafka producer disconnected.');
+  metrics.kafkaDisconnectionInc();
 }
 
-/**
- * Execute the fetchAndPublishPrices function with retry mechanism
- */
-const retryOptions = {
-    retries: 5, // Retry 5 times
-    minTimeout: 1000, // Initial retry delay
-    maxTimeout: 5000, // Maximum retry delay
-    onRetry: (err, attempt) => {
-        logger.warn(`Attempt ${attempt} failed. Retrying...`, { error: err });
-    }
-};
+// Setup graceful shutdown on SIGINT and SIGTERM signals
+gracefulShutdown(producer, logger);
 
-retry(fetchAndPublishPrices, retryOptions)
-    .catch(err => {
-        logger.error('Error in fetching/publishing competitor prices:', { error: err });
-        process.exit(1); // Exit with error status
-    });
+// Main function to execute fetching and publishing of competitor prices
+async function main() {
+  try {
+    await fetchAndPublishPrices();
+  } catch (error) {
+    logger.error('Failed to fetch and publish competitor prices:', error);
+    metrics.errorInc();
+    process.exit(1);
+  }
+}
+
+// Execute main function
+main();
