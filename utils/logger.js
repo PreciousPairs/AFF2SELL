@@ -71,6 +71,11 @@ async function fetchAndPublishPrices() {
             metrics.fetchRetryInc();
         },
     });
+export const logger = {
+  info: (message: string, ...optionalParams: any[]) => console.log(message, ...optionalParams),
+  error: (message: string, ...optionalParams: any[]) => console.error(message, ...optionalParams),
+  warn: (message: string, ...optionalParams: any[]) => console.warn(message, ...optionalParams),
+};
 
     // Determine the Kafka topic for publishing prices
     const topic = determineTopic(prices);
