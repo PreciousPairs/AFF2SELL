@@ -1,27 +1,52 @@
-// utils/dynamicTopicSubscriber.js
-const { kafkaConsumer } = require('./kafkaConsumer'); // Import the Kafka consumer utility
-const dbService = require('../database/dbService'); // Simulate fetching topic subscriptions from a database
+// kafka/utils/dynamicTopicSubscriber.js
+const { Kafka } = require('kafkajs');
+const dbService = require('../database/dbService'); // Service to fetch Kafka topic configurations
+const logger = require('../utils/logger'); // Custom logging utility
 
-/**
- * Subscribes to Kafka topics dynamically based on configurations stored in a database.
- * This allows for flexible topic subscriptions that can be updated without redeploying the service.
- */
-exports.subscribeToDynamicTopics = async () => {
+class DynamicTopicSubscriber {
+  constructor(kafkaConsumer) {
+    this.consumer = kafkaConsumer;
+    this.subscribedTopics = new Set(); // Track currently subscribed topics
+  }
+
+  async fetchAndSubscribe() {
     try {
-        // Fetch the list of topics to subscribe to from the database service
-        const topicsToSubscribe = await dbService.fetchTopicsForSubscription();
+      const topicsToSubscribe = await dbService.fetchTopicsForSubscription();
 
-        // Subscribe to each topic using the Kafka consumer
-        await Promise.all(
-            topicsToSubscribe.map(async (topic) => {
-                await kafkaConsumer.subscribe({ topic, fromBeginning: true });
-                console.log(`Successfully subscribed to Kafka topic: ${topic}`);
-            })
-        );
+      // Determine new topics to subscribe to (not already subscribed)
+      const newTopics = topicsToSubscribe.filter(topic => !this.subscribedTopics.has(topic));
 
-        console.log(`Subscribed to topics: ${topicsToSubscribe.join(', ')}`);
+      // Subscribe to new topics
+      for (const topic of newTopics) {
+        await this.consumer.subscribe({ topic, fromBeginning: true });
+        this.subscribedTopics.add(topic); // Add to the set of subscribed topics
+        logger.info(`Subscribed to Kafka topic: ${topic}`);
+      }
+
+      // Log successfully subscribed topics
+      logger.info(`Current subscribed topics: ${Array.from(this.subscribedTopics).join(', ')}`);
+
+      // Optionally: Unsubscribe from topics no longer in the configuration
+      this.handleTopicUnsubscription(topicsToSubscribe);
+
     } catch (error) {
-        // Log and handle errors encountered during the subscription process
-        console.error('Failed to subscribe to dynamic topics:', error);
+      logger.error('Failed to subscribe to dynamic topics:', error);
     }
-};
+  }
+
+  async handleTopicUnsubscription(topicsToSubscribe) {
+    // Identify topics to unsubscribe from
+    const topicsToUnsubscribe = Array.from(this.subscribedTopics).filter(topic => !topicsToSubscribe.includes(topic));
+
+    for (const topic of topicsToUnsubscribe) {
+      // KafkaJS does not support direct unsubscribe. Handle this according to your application logic.
+      // For example, pause consuming messages from this topic or adjust your application's behavior.
+      this.subscribedTopics.delete(topic);
+      logger.info(`Unsubscribed from Kafka topic: ${topic}`);
+    }
+
+    // Rebalance consumer groups or implement custom logic as needed after unsubscribing
+  }
+}
+
+module.exports = DynamicTopicSubscriber;
