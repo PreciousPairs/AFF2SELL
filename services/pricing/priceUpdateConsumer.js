@@ -1,50 +1,92 @@
+// Load environment variables from .env file
 require('dotenv').config();
-const { Kafka } = require('kafkajs');
-const updateProductPrice = require('./updateProductPrice'); // Assumes updates price in the database or an external API.
-const logger = require('../utils/logger'); // Custom logger module for structured logging.
 
-// Kafka consumer configuration with environment-based settings for flexibility and security.
-const kafka = new Kafka({
-    clientId: 'update-service',
-    brokers: process.env.KAFKA_BROKERS.split(','),
-    ssl: process.env.KAFKA_SSL === 'true' ? { rejectUnauthorized: true } : false,
-    sasl: process.env.KAFKA_SASL_USERNAME && process.env.KAFKA_SASL_PASSWORD ? {
-        mechanism: 'plain', // or 'scram-sha-256'/'scram-sha-512' based on broker config.
-        username: process.env.KAFKA_SASL_USERNAME,
-        password: process.env.KAFKA_SASL_PASSWORD
-    } : undefined,
+// Import necessary modules
+const { Kafka, logLevel } = require('kafkajs');
+const winston = require('winston');
+const updateProductPrice = require('./services/updateProductPrice');
+
+// Setup Winston logger for application-wide logging
+const appLogger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'app.log' })
+  ],
 });
 
-const consumer = kafka.consumer({ groupId: 'update-price-group' });
+// Kafka client configuration
+const kafka = new Kafka({
+  clientId: 'price-update-service',
+  brokers: process.env.KAFKA_BROKERS.split(','),
+  ssl: process.env.KAFKA_SSL === 'true' ? { rejectUnauthorized: true } : undefined,
+  sasl: process.env.KAFKA_SASL_USERNAME && process.env.KAFKA_SASL_PASSWORD ? {
+    mechanism: 'plain',
+    username: process.env.KAFKA_SASL_USERNAME,
+    password: process.env.KAFKA_SASL_PASSWORD
+  } : undefined,
+  logLevel: logLevel.INFO,
+});
 
-// Handles consuming price update messages and applying updates.
+// Kafka logger integration with Winston
+kafka.logger().setLogCreator(() => {
+  return ({ namespace, level, label, log }) => {
+    const { message, ...extra } = log;
+    appLogger.log({
+      level: level.label,
+      message: `${label} ${namespace} ${message}`,
+      extra,
+    });
+  };
+});
+
+// Initialize Kafka consumer
+const consumer = kafka.consumer({ groupId: 'price-update-consumer-group' });
+
+// Async function to consume and process messages
 async function consumeAndTriggerPriceUpdates() {
-    try {
-        await consumer.connect();
-        logger.info('Price Update Consumer connected to Kafka.');
+  try {
+    await consumer.connect();
+    appLogger.info('Kafka Consumer connected.');
 
-        await consumer.subscribe({ topic: 'price-updates', fromBeginning: true });
+    await consumer.subscribe({ topic: 'price-updates', fromBeginning: true });
 
-        await consumer.run({
-            eachMessage: async ({ topic, partition, message }) => {
-                try {
-                    const updateInfo = JSON.parse(message.value.toString());
-                    await updateProductPrice(updateInfo); // Update product price with the provided info.
-                    logger.info(`Price update applied for product ID: ${updateInfo.productId}`);
-                } catch (err) {
-                    logger.error(`Error processing message from ${topic} at partition ${partition}: ${err.message}`, err);
-                    // Implement error handling strategies such as retries, dead-letter queues, etc.
-                }
-            },
-        });
-    } catch (err) {
-        logger.error('Error in consuming/triggering price updates:', err);
-        // Consider implementing a reconnection strategy or alerting mechanism here.
-    }
+    await consumer.run({
+      eachMessage: async ({ topic, partition, message }) => {
+        const payload = JSON.parse(message.value.toString());
+        appLogger.info(`Received message on ${topic}:${partition}: ${JSON.stringify(payload)}`);
+
+        try {
+          await updateProductPrice(payload);
+          appLogger.info(`Price update processed for product ID: ${payload.productId}`);
+        } catch (error) {
+          appLogger.error(`Failed to process price update for product ID: ${payload.productId}`, error);
+          // Implement retry logic, error handling, or dead-letter queue logic here
+        }
+      },
+    });
+  } catch (error) {
+    appLogger.error('Error in consuming/processing messages:', error);
+    throw error;
+  }
 }
 
-// Start the consumer with error handling.
-consumeAndTriggerPriceUpdates().catch(err => {
-    logger.error('Fatal error in price update consumer:', err);
-    process.exit(1); // Exit the process for systems like Kubernetes to attempt a restart.
+// Handle graceful shutdown
+const shutdown = async () => {
+  appLogger.info('Shutting down gracefully...');
+  await consumer.disconnect();
+  process.exit(0);
+};
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
+// Execute the consumer function
+consumeAndTriggerPriceUpdates().catch((error) => {
+  appLogger.error('Fatal error in Kafka consumer:', error);
+  process.exit(1);
 });
