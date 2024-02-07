@@ -1,3 +1,182 @@
+## API Layer
+
+- **Configurations**: `/api/config`
+  - Database Config: `/api/config/dbConfig.ts`
+  - Kafka Config: `/api/config/kafkaConfig.ts`
+
+- **Controllers**: `/api/controllers`
+  - Pricing Controller: `/api/controllers/PricingController.ts`
+  - User Controller: `/api/controllers/UserController.ts`
+  
+- **Middleware**: `/api/middleware`
+  - Authentication Middleware: `/api/middleware/AuthMiddleware.ts`
+  - Tenant Resolver Middleware: `/api/middleware/TenantMiddleware.ts`
+  
+- **Models**: `/api/models`
+  - Product Model: `/api/models/ProductModel.ts`
+  - User Model: `/api/models/UserModel.ts`
+  - Pricing Strategy Model: `/api/models/PricingStrategyModel.ts`
+  
+- **Routes**: `/api/routes`
+  - Pricing Routes: `/api/routes/pricingRoutes.ts`
+  - User Routes: `/api/routes/userRoutes.ts`
+  
+- **Services**: `/api/services`
+  - Pricing Service: `/api/services/PricingService.ts`
+  - User Service: `/api/services/UserService.ts`
+  
+- **Kafka Integration**: `/api/kafka`
+  - Kafka Producer: `/api/kafka/KafkaProducer.ts`
+  - Kafka Consumer: `/api/kafka/KafkaConsumer.ts`
+
+- **Utilities**: `/api/utils`
+  - Error Handler: `/api/utils/ErrorHandler.ts`
+  - Tenant Validator: `/api/utils/TenantValidator.ts`
+
+### Frontend Layer
+
+- **Components**: `/frontend/components`
+  - Dashboard Page: `/frontend/components/DashboardPage.tsx`
+  - Settings Page:
+- **Configurations**: `/api/config`
+  - Database Config: `/api/config/dbConfig.ts`
+  - Kafka Config: `/api/config/kafkaConfig.ts`
+
+- **Controllers**: `/api/controllers`
+  - Pricing Controller: `/api/controllers/PricingController.ts`
+  - User Controller: `/api/controllers/UserController.ts`
+  
+- **Middleware**: `/api/middleware`
+  - Authentication Middleware: `/api/middleware/AuthMiddleware.ts`
+  - Tenant Resolver Middleware: `/api/middleware/TenantMiddleware.ts`
+  
+- **Models**: `/api/models`
+  - Product Model: `/api/models/ProductModel.ts`
+  - User Model: `/api/models/UserModel.ts`
+  - Pricing Strategy Model: `/api/models/PricingStrategyModel.ts`
+  
+- **Routes**: `/api/routes`
+  - Pricing Routes: `/api/routes/pricingRoutes.ts`
+  - User Routes: `/api/routes/userRoutes.ts`
+  
+- **Services**: `/api/services`
+  - Pricing Service: `/api/services/PricingService.ts`
+  - User Service: `/api/services/UserService.ts`
+  
+- **Kafka Integration**: `/api/kafka`
+  - Kafka Producer: `/api/kafka/KafkaProducer.ts`
+  - Kafka Consumer: `/api/kafka/KafkaConsumer.ts`
+
+- **Utilities**: `/api/utils`
+  - Error Handler: `/api/utils/ErrorHandler.ts`
+  - Tenant Validator: `/api/utils/TenantValidator.ts`
+
+### Frontend Layer
+
+- **Components**: `/frontend/components`
+  - Dashboard Page: `/frontend/components/DashboardPage.tsx`
+  - Settings Page:
+
+### Frontend Layer
+
+- **Components**: `/frontend/components`
+  - **Dashboard Page**: `/frontend/components/DashboardPage.tsx`
+  - **Settings Page**: `/frontend/components/SettingsPage.tsx`
+  - **Login Page**: `/frontend/components/LoginPage.tsx`
+  - **Common Components**:
+    - Notifier: `/frontend/components/common/Notifier.tsx`
+    - Confirmer: `/frontend/components/common/Confirmer.tsx`
+  - **Layout Components**:
+    - Header: `/frontend/components/layout/Header.tsx`
+    - Footer: `/frontend/components/layout/Footer.tsx`
+
+- **Hooks**: `/frontend/hooks`
+  - useAsyncData: `/frontend/hooks/useAsyncData.ts`
+  - useTenant: `/frontend/hooks/useTenant.ts`
+  - useAuth: `/frontend/hooks/useAuth.ts`
+
+- **Libraries**: `/frontend/lib`
+  - API Client: `/frontend/lib/apiClient.ts`
+
+- **Pages**: `/frontend/pages`
+  - Login: `/frontend/pages/LoginPage.tsx`
+  - Dashboard: `/frontend/pages/DashboardPage.tsx`
+  - Settings: `/frontend/pages/SettingsPage.tsx`
+  - Pricing: `/frontend/pages/PricingPage.tsx`
+
+- **Public**: `/frontend/public`
+  - Service Worker: `/frontend/public/serviceWorker.js`
+
+- **State Management**: `/frontend/state`
+  - Redux Store: `/frontend/state/store.ts`
+
+- **Styles**: `/frontend/styles`
+  - Theme: `/frontend/styles/theme.ts`
+
+- **App Configuration**: `/frontend`
+  - Main App: `/frontend/_app.tsx`
+  - Document: `/frontend/_document.tsx`
+
+#### Lib (`/frontend/lib`)
+- **apiClient.js**
+  - Encapsulates Axios instances for API calls, pre-configured with base URLs and interceptors for handling tokens and headers.
+
+#### Pages (`/frontend/pages`)
+- **LoginPage.js**
+  - Implements the login interface, integrating with the backend for authentication.
+- **DashboardPage.js**
+  - Main dashboard interface showing pricing strategies, product listings, and analytics.
+- **SettingsPage.js**
+  - Allows users and admins to configure system settings, user profiles, and API integrations.
+
+#### Public (`/frontend/public`)
+- **serviceWorker.js**
+  - Service worker script for caching strategies and PWA features.
+
+#### State Management (`/frontend/state`)
+- **store.js**
+  - Setup for Redux store or Context API, managing global state across the app.
+
+#### Styles (`/frontend/styles`)
+- **theme.js**
+  - Theme configuration for Material-UI or styled-components, defining colors, typography, and breakpoints.
+
+### Additional JavaScript Files
+
+#### Kafka Integration Scripts (`/api/kafka`)
+- **KafkaProducer.js** and **KafkaConsumer.js** may require additional utility scripts for handling specific Kafka functionalities such as:
+  - **messageHandlers.js**
+    - Functions to process incoming Kafka messages based on topic and payload.
+  - **topicConfigurations.js**
+    - Definitions of Kafka topic configurations, partition strategies, and retention policies.
+
+#### Utility Scripts (`/api/utils`)
+- **Logger.js**
+  - A custom logging utility wrapping around Winston or another logging library, configured for different environments (development, production).
+- **ConfigValidator.js**
+  - Validates environment configurations and critical startup parameters to ensure the system is correctly configured before launch.
+
+### Test Scripts (`/api/tests` and `/frontend/tests`)
+- **Backend Unit/Integration Tests** (`/api/tests`)
+  - **UserController.test.js**
+    - Tests for user authentication, registration, and management endpoints.
+  - **PricingService.test.js**
+    - Validates the logic of pricing adjustments and strategy applications.
+- **Frontend Tests** (`/frontend/tests`)
+  - **DashboardPage.test.js**
+    - Ensures the dashboard renders correctly and interacts with the mock API appropriately.
+  - **LoginPage.test.js**
+    - Verifies login functionality, form validation, and navigation upon successful authentication.
+
+### Configuration and Setup Scripts
+- **.env.example**
+  - An example .env file in the root directory, documenting all required environment variables.
+- **setupScripts.js**
+  - Scripts that might be needed for initial setup, database seeding, Kafka topic creation, or environment validation.
+
+This comprehensive structure aims to encapsulate all aspects of the SaaS repricer system, ensuring clarity in development, ease of maintenance, and scalability. The frontend components are designed to provide a user-friendly interface for interaction with the repricer system's core functionalities, while backend scripts ensure robust data processing, secure authentication, and efficient communication with Kafka for real-time data handling.
+
+This structure outlines a comprehensive frontend architecture, including essential components, hooks for state management, libraries for API interactions, and static public assets. It also covers the state management setup, typically with Redux or a similar library, and theming/styling conventions for a cohesive look and feel across the application.
 Backend Enhancements
 /config/redisConfig.js
 
