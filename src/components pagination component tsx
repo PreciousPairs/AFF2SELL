@@ -1,0 +1,26 @@
+import React from 'react';
+
+interface PaginationComponentProps {
+  data: any[];
+  onPageChange: (pageNumber: number) => void;
+}
+
+const PaginationComponent: React.FC<PaginationComponentProps> = ({ data, onPageChange }) => {
+  const totalPages = Math.ceil(data.length / 10); // assuming 10 items per page
+
+  const handlePageChange = (pageNumber: number) => {
+    onPageChange(pageNumber);
+  };
+
+  return (
+    <div>
+      {[...Array(totalPages).keys()].map((pageNumber) => (
+        <button key={pageNumber} onClick={() => handlePageChange(pageNumber + 1)}>
+          {pageNumber + 1}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+export default PaginationComponent;
