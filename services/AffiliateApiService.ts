@@ -1,7 +1,6 @@
-// /services/AffiliateApiService.ts
 import axios from 'axios';
-import crypto from 'crypto';
-import { Logger } from '../utils/logger'; // Custom logger for structured logging
+import crypto from 'crypto'; // Importing the crypto module for cryptographic functionality
+import { Logger } from '../utils/logger';
 
 interface Signature {
     signature: string;
@@ -26,7 +25,7 @@ class AffiliateApiService {
     private generateSignature(): Signature {
         const timestamp = Date.now().toString();
         const dataToSign = `WM_CONSUMER.ID:${this.consumerId}\nWM_CONSUMER.INTIMESTAMP:${timestamp}\nWM_SEC.KEY_VERSION:${this.keyVersion}`;
-        
+
         const signer = crypto.createSign('RSA-SHA256');
         signer.update(dataToSign);
         signer.end();
