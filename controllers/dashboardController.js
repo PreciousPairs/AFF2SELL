@@ -1,32 +1,42 @@
+// routes/analyticsRoutes.js
 const express = require('express');
 const router = express.Router();
 const { generateProductReport, generateActivityLogReport } = require('../services/analyticsService');
 const { authorize } = require('../middleware/authorize');
+const { validate } = require('../middleware/validate');
+const { errorHandler } = require('../middleware/errorHandler');
+const { fetchRealTimeData } = require('../services/realTimeService');
 
-router.get('/product-report', authorize(['admin']), async (req, res) => {
+// Middleware for error handling
+router.use(errorHandler);
+
+// Route for generating product report
+router.get('/product-report', authorize(['admin']), async (req, res, next) => {
   try {
     const report = await generateProductReport();
     res.json(report);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error); // Pass error to the error handling middleware
   }
 });
 
-router.get('/activity-log', authorize(['admin']), async (req, res) => {
+// Route for generating activity log report
+router.get('/activity-log', authorize(['admin']), async (req, res, next) => {
   try {
     const logs = await generateActivityLogReport();
     res.json(logs);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error); // Pass error to the error handling middleware
   }
 });
-// Add real-time data streaming
+
+// Route for real-time data streaming using WebSocket
 router.ws('/real-time-data', (ws, req) => {
   ws.on('message', (msg) => {
     console.log(`Received message ${msg}`);
   });
   const sendData = () => {
-    const data = fetchRealTimeData(); // Fetch real-time data
+    const data = fetchRealTimeData(); // Assuming fetchRealTimeData is a function to fetch real-time data
     ws.send(JSON.stringify(data));
   };
   setInterval(sendData, 1000); // Send data every second
