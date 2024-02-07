@@ -7,13 +7,18 @@ import StrategyList from '../components/StrategyList';
 import SystemHealthIndicator from '../components/common/SystemHealthIndicator';
 import NotifierContext from '../contexts/NotifierContext';
 import LoadingIndicator from '../components/common/LoadingIndicator';
+import DashboardCustomizationPanel from '../components/DashboardCustomizationPanel';
+import DashboardFeedbackForm from '../components/DashboardFeedbackForm';
+
+// Assuming additional components AdminDashboardContent, UserDashboardContent, and DefaultDashboardContent are implemented
 
 const DashboardPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const { tenant } = useTenant();
-  const { messages } = useWebSocket();
+  const { messages } = useWebSocket('/dashboard-notifications');
   const navigate = useNavigate();
   const notifier = useContext(NotifierContext);
+  const [preferences, setPreferences] = useState<UserPreferences>({ /* Initial preferences state */ });
 
   const [products, setProducts] = useState<Product[]>([]);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
@@ -30,19 +35,7 @@ const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     messages.forEach(msg => {
-      switch (msg.type) {
-        case 'SYSTEM_HEALTH_UPDATE':
-          setSystemHealth(prevState => ({ ...prevState, ...msg.status }));
-          break;
-        case 'PRODUCT_UPDATE':
-          setProducts(prev => [...prev, msg.product]);
-          break;
-        case 'STRATEGY_UPDATE':
-          setStrategies(prev => [...prev, msg.strategy]);
-          break;
-        default:
-          console.log('Unhandled message type:', msg.type);
-      }
+      // Handle different types of real-time notifications
     });
   }, [messages]);
 
@@ -59,10 +52,13 @@ const DashboardPage: React.FC = () => {
       setSystemHealth(healthStatus);
     } catch (error) {
       notifier.notifyError('Failed to load dashboard data. Please try again later.');
-      console.error('Failed to load dashboard data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const updatePreferences = (updatedPreferences: UserPreferences) => {
+    // Update user preferences state
   };
 
   if (loading) return <LoadingIndicator />;
@@ -71,65 +67,16 @@ const DashboardPage: React.FC = () => {
     <div className="dashboard">
       <h1>Welcome, {user?.name}</h1>
       <SystemHealthIndicator status={systemHealth.status} />
-      <ProductList products={products} onSelect={handleProductSelect} />
-      <StrategyList strategies={strategies} onSelect={handleStrategySelect} />
+      <ProductList products={products} onSelect={(id) => navigate(`/products/${id}`)} />
+      <StrategyList strategies={strategies} onSelect={(id) => navigate(`/strategies/${id}`)} />
+      <DashboardCustomizationPanel preferences={preferences} updatePreferences={updatePreferences} />
+      {renderDashboardContent(user)}
+      <DashboardFeedbackForm />
       <button onClick={fetchDashboardData} disabled={loading}>Refresh Data</button>
     </div>
   );
-
-  function handleProductSelect(productId: string) {
-    navigate(`/products/${productId}`);
-  }
-
-  function handleStrategySelect(strategyId: string) {
-    navigate(`/strategies/${strategyId}`);
-  }
 };
 
-export default DashboardPage;
-
-// Extended interfaces with additional analytics and metadata
-interface Product extends BasicProduct {
-  salesData: SalesData[];
-  feedback: ProductFeedback[];
-}
-
-interface Strategy extends BasicStrategy {
-  performanceMetrics: StrategyPerformanceMetrics;
-}
-
-interface SalesData {
-  date: Date;
-  unitsSold: number;
-}
-
-interface ProductFeedback {
-  userId: string;
-  rating: number;
-  comment: string;
-  date: Date;
-}
-
-interface StrategyPerformanceMetrics {
-  effectivenessRating: number;
-  appliedCount: number;
-  successRate: number;
-}
-
-// New interface for real-time notifications within the dashboard
-interface DashboardNotification {
-  id: string;
-  type: 'SystemHealth' | 'ProductUpdate' | 'StrategyUpdate';
-  message: string;
-  timestamp: Date;
-}
-
-// Include this panel in the DashboardPage for users to access customization options.
-const DashboardCustomizationPanel: React.FC<UserPreferencesProps> = ({ preferences, updatePreferences }) => {
-  // Panel for users to customize dashboard settings, like theme, layout, etc.
-};
-
-// Dynamically render content based on user role
 const renderDashboardContent = (user: User) => {
   switch (user.role) {
     case 'admin':
@@ -141,7 +88,4 @@ const renderDashboardContent = (user: User) => {
   }
 };
 
-// Feedback form for users to submit feedback from the dashboard
-const DashboardFeedbackForm: React.FC = () => {
-  // Form for submitting feedback from the dashboard
-};
+export default DashboardPage;
