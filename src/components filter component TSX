@@ -1,0 +1,27 @@
+import React, { useState } from 'react';
+
+interface FilterComponentProps {
+  onFilterChange: (filter: string) => void;
+}
+
+const FilterComponent: React.FC<FilterComponentProps> = ({ onFilterChange }) => {
+  const [filter, setFilter] = useState('');
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFilter(event.target.value);
+  };
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    onFilterChange(filter);
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" value={filter} onChange={handleChange} placeholder="Filter..." />
+      <button type="submit">Apply Filter</button>
+    </form>
+  );
+};
+
+export default FilterComponent;
