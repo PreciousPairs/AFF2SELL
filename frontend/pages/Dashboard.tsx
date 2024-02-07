@@ -12,18 +12,64 @@ import LoadingIndicator from '../components/common/LoadingIndicator';
 interface Product {
   id: string;
   name: string;
-  // Add other product properties
+  description: string;
+  msrp: number; // Manufacturer's Suggested Retail Price
+  salePrice: number; // Current sale price
+  stockLevel: number;
+  category: string;
+  imageUrl: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  upc: string; // Universal Product Code
+  tags: string[];
+  customFields: Record<string, any>;
 }
 
 interface Strategy {
   id: string;
   name: string;
-  // Add other strategy properties
+  description: string;
+  type: 'dynamicPricing' | 'fixedPricing' | 'discountBased';
+  rules: PricingRule[];
+  isActive: boolean;
+  targetProducts: string[];
+  createdAt: Date;
+  updatedAt: Date;
+  metadata: Record<string, any>;
+}
+
+interface PricingRule {
+  id: string;
+  condition: RuleCondition;
+  action: RuleAction;
+  priority: number;
+}
+
+interface RuleCondition {
+  type: 'price' | 'stockLevel' | 'category' | 'tag';
+  comparison: 'equals' | 'greaterThan' | 'lessThan' | 'includes';
+  value: string | number | boolean;
+}
+
+interface RuleAction {
+  type: 'setPrice' | 'increaseBy' | 'decreaseBy' | 'applyDiscount';
+  amount: number;
 }
 
 interface SystemHealth {
   status: 'good' | 'warning' | 'critical';
-  // Add other system health properties
+  lastChecked: Date;
+  issues: SystemIssue[];
+}
+
+interface SystemIssue {
+  id: string;
+  description: string;
+  severity: 'minor' | 'major' | 'critical';
+  detectedAt: Date;
+  resolvedAt?: Date;
+  metadata: Record<string, any>;
 }
 
 const DashboardPage: React.FC = () => {
