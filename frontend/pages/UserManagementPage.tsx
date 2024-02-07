@@ -1,24 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import UserService from '../services/UserService';
-import UserForm from '../components/UserForm'; // Component for user creation and update
+import UserForm from '../components/UserForm';
 import Notifier from '../components/common/Notifier';
+import LoadingIndicator from '../components/common/LoadingIndicator';
+import ErrorMessage from '../components/common/ErrorMessage';
 
 const UserManagementPage: React.FC = () => {
-    const [users, setUsers] = useState([]);
-    const [selectedUser, setSelectedUser] = useState(null);
-    const [isEditing, setIsEditing] = useState(false);
+    const [users, setUsers] = useState<any[]>([]);
+    const [selectedUser, setSelectedUser] = useState<any | null>(null);
+    const [isEditing, setIsEditing] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [isError, setIsError] = useState<boolean>(false);
+    const [errorMessage, setErrorMessage] = useState<string>('');
 
     useEffect(() => {
         fetchUsers();
     }, []);
 
     const fetchUsers = async () => {
+        setIsLoading(true);
+        setIsError(false);
         try {
             const fetchedUsers = await UserService.getUsers();
             setUsers(fetchedUsers);
         } catch (error) {
+            setIsError(true);
+            setErrorMessage('Failed to load users.');
             console.error('Error fetching users:', error);
             Notifier.notifyError('Failed to load users.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -27,15 +38,15 @@ const UserManagementPage: React.FC = () => {
         setIsEditing(true);
     };
 
-    const handleEditUser = (user) => {
+    const handleEditUser = (user: any) => {
         setSelectedUser(user);
         setIsEditing(true);
     };
 
-    const handleDeleteUser = async (userId) => {
+    const handleDeleteUser = async (userId: string) => {
         try {
             await UserService.deleteUser(userId);
-            fetchUsers(); // Refresh the list after deletion
+            fetchUsers();
             Notifier.notifySuccess('User deleted successfully.');
         } catch (error) {
             console.error(`Error deleting user with ID ${userId}:`, error);
@@ -43,7 +54,7 @@ const UserManagementPage: React.FC = () => {
         }
     };
 
-    const handleSubmit = async (userData) => {
+    const handleSubmit = async (userData: any) => {
         try {
             if (selectedUser) {
                 await UserService.updateUser(selectedUser.id, userData);
@@ -51,13 +62,16 @@ const UserManagementPage: React.FC = () => {
                 await UserService.createUser(userData);
             }
             setIsEditing(false);
-            fetchUsers(); // Refresh the list after creation or update
+            fetchUsers();
             Notifier.notifySuccess(`User ${selectedUser ? 'updated' : 'created'} successfully.`);
         } catch (error) {
             console.error('Error submitting user data:', error);
             Notifier.notifyError(`Failed to ${selectedUser ? 'update' : 'create'} user.`);
         }
     };
+
+    if (isLoading) return <LoadingIndicator />;
+    if (isError) return <ErrorMessage message={errorMessage} />;
 
     return (
         <div>
