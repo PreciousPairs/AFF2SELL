@@ -1,22 +1,22 @@
-// /frontend/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import SettingsPage from './pages/SettingsPage';
-import PricingPage from './pages/PricingPage'; // Assuming this exists
+import PricingPage from './pages/PricingPage';
+import ProductDetailPage from './pages/ProductDetailPage'; // Assuming this exists
+import StrategyDetailPage from './pages/StrategyDetailPage'; // Assuming this exists
 import { AuthProvider } from './hooks/useAuth';
-import { TenantProvider } from './hooks/useTenant'; // Assuming useTenant is context-based
+import { TenantProvider } from './hooks/useTenant';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
-import './styles/App.css'; // Assuming a centralized stylesheet
+import './styles/App.css';
 
 const App: React.FC = () => {
     return (
         <Router>
             <AuthProvider>
-                <TenantProvider> 
-                    {/* Wrap the entire app with Auth and Tenant context providers */}
+                <TenantProvider>
                     <div className="app-container">
                         <Header />
                         <main>
