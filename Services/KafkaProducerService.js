@@ -1,180 +1,103 @@
-const { Kafka, CompressionTypes } = require('kafkajs');
+require('dotenv').config();
+const { Kafka, logLevel, CompressionTypes } = require('kafkajs');
 const crypto = require('crypto');
 const { SchemaRegistry } = require('@kafkajs/confluent-schema-registry');
-const avsc = require('avsc'); // Import Avro serialization library
+const logger = require('./utils/logger'); // Custom logger for standardized logging
 
-// Utility imports
-const loggingUtil = require('../utils/loggingUtil');
-const kafkaConfig = require('../config/kafkaConfig'); // Adjust this path as needed
-const { customPartitioner, determineTopicBasedOnContent } = require('../utils/kafkaHelpers');
+// Kafka Producer Configuration
+const kafkaConfig = {
+    clientId: process.env.KAFKA_CLIENT_ID,
+    brokers: process.env.KAFKA_BROKERS.split(','),
+    ssl: true,
+    logLevel: logLevel.INFO,
+};
 
-// Kafka Producer Service Class
-class AdvancedKafkaProducerService {
+// Schema Registry for Avro serialization
+const registry = new SchemaRegistry({ host: process.env.SCHEMA_REGISTRY_URL });
+
+class KafkaProducerService {
     constructor() {
         this.kafka = new Kafka(kafkaConfig);
-        this.producer = this.kafka.producer({ idempotent: true }); // Enabling idempotent producer
-        this.registry = new SchemaRegistry({ host: 'http://your-schema-registry-url' });
+        this.producer = this.kafka.producer({ idempotent: true, transactionalId: 'saas-repricer-producer' });
     }
 
-    // Connect to Kafka Broker
     async connect() {
         try {
             await this.producer.connect();
-            loggingUtil.log('Kafka Producer connected successfully.');
+            logger.info('Kafka Producer connected successfully.');
         } catch (error) {
-            loggingUtil.error('Kafka Producer connection failed.', error);
+            logger.error('Kafka Producer connection failed: ', error);
             throw error;
         }
     }
 
-    // Disconnect from Kafka Broker
     async disconnect() {
         try {
             await this.producer.disconnect();
-            loggingUtil.log('Kafka Producer disconnected successfully.');
+            logger.info('Kafka Producer disconnected successfully.');
         } catch (error) {
-            loggingUtil.error('Kafka Producer disconnection failed.', error);
+            logger.error('Kafka Producer disconnection failed: ', error);
             throw error;
         }
     }
 
-    // Send a message to a specified topic
-    async sendMessage(tenantId, topic, messages) {
-        const tenantTopic = `${tenantId}-${topic}`;
-        const formattedMessages = messages.map(msg => ({
-            key: msg.key ? String(msg.key) : null,
+    async sendMessages({ tenantId, messages }) {
+        const enrichedMessages = messages.map(msg => ({
+            key: msg.key,
             value: JSON.stringify(msg.value),
+            headers: { tenantId },
         }));
 
         try {
             await this.producer.send({
-                topic: tenantTopic,
-                messages: formattedMessages,
+                topic: determineTopicBasedOnContent(messages),
+                messages: enrichedMessages,
                 compression: CompressionTypes.GZIP,
             });
-            loggingUtil.log(`Message(s) sent to topic ${tenantTopic} successfully.`);
+            logger.info(`Messages sent successfully for tenantId: ${tenantId}`);
         } catch (error) {
-            loggingUtil.error(`Failed to send message to topic ${tenantTopic}`, error);
+            logger.error(`Failed to send messages for tenantId: ${tenantId}`, error);
             throw error;
         }
     }
 
-    // Send a transactional message to a specified topic
-    async sendTransactionalMessage(tenantId, topic, messages) {
-        const transaction = await this.producer.transaction();
-        const tenantTopic = `${tenantId}-${topic}`;
-        try {
-            await transaction.send({
-                topic: tenantTopic,
-                messages: messages.map(msg => ({ value: JSON.stringify(msg) })),
-            });
-            await transaction.commit();
-            loggingUtil.log(`Transactional message sent to topic ${tenantTopic} successfully.`);
-        } catch (error) {
-            await transaction.abort();
-            loggingUtil.error(`Failed to send transactional message to topic ${tenantTopic}`, error);
-            throw error;
-        }
+    // Encryption utility for secure message handling
+    encryptMessage(message, secretKey) {
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(secretKey), iv);
+        let encrypted = cipher.update(message);
+        encrypted = Buffer.concat([encrypted, cipher.final()]);
+        return iv.toString('hex') + ':' + encrypted.toString('hex');
     }
 
-    // Send a message with retry
-    async sendMessageWithRetry(tenantId, topic, messages, retryCount = 5) {
-        const tenantTopic = `${tenantId}-${topic}`;
-        for (let attempt = 0; attempt < retryCount; attempt++) {
-            try {
-                await this.sendMessage(tenantId, topic, messages);
-                loggingUtil.log(`Message(s) sent to topic ${tenantTopic} successfully on attempt ${attempt + 1}.`);
-                break; // Break loop on successful send
-            } catch (error) {
-                loggingUtil.warn(`Attempt ${attempt + 1} failed for topic ${tenantTopic}. Retrying...`, error);
-                if (attempt === retryCount - 1) throw error; // Throw error on the last attempt
-                await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt))); // Exponential backoff
-            }
-        }
+    // Decryption utility for secure message handling
+    decryptMessage(encryptedMessage, secretKey) {
+        const textParts = encryptedMessage.split(':');
+        const iv = Buffer.from(textParts.shift(), 'hex');
+        const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+        const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(secretKey), iv);
+        let decrypted = decipher.update(encryptedText);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return decrypted.toString();
     }
 
-    // Send batch messages
-    async sendBatch(tenantId, batchMessages) {
-        const batch = batchMessages.map(batchMessage => ({
-            topic: `${tenantId}-${batchMessage.topic}`,
-            messages: batchMessage.messages.map(msg => ({ value: JSON.stringify(msg) })),
-            compression: CompressionTypes.GZIP,
-        }));
-
-        try {
-            await this.producer.sendBatch({ topicMessages: batch });
-            loggingUtil.log('Batch messages sent successfully.');
-        } catch (error) {
-            loggingUtil.error('Failed to send batch messages.', error);
-            throw error;
-        }
-    }
-
-    // Implement message encryption logic here
-    encryptMessage(message, encryptionKey) {
-        const cipher = crypto.createCipher('aes-256-cbc', encryptionKey);
-        let encryptedMessage = cipher.update(message, 'utf8', 'hex');
-        encryptedMessage += cipher.final('hex');
-        return encryptedMessage;
-    }
-
-    // Implement message decryption logic here
-    decryptMessage(encryptedMessage, encryptionKey) {
-        const decipher = crypto.createDecipher('aes-256-cbc', encryptionKey);
-        let decryptedMessage = decipher.update(encryptedMessage, 'hex', 'utf8');
-        decryptedMessage += decipher.final('utf8');
-        return decryptedMessage;
-    }
-
-    // Send Avro message
-    async sendAvroMessage(tenantId, topic, avroMessage) {
-        // Parse your Avro schema definition here
-        const schema = avsc.parse(/* Avro schema definition */);
-
-        const serializedMessage = avsc.toBuffer(schema, avroMessage);
+    // Send Avro serialized message
+    async sendAvroMessage({ tenantId, topic, avroSchemaId, message }) {
+        const schema = await registry.getSchema(avroSchemaId);
+        const encodedMessage = await registry.encode(avroSchemaId, message);
 
         try {
             await this.producer.send({
                 topic: `${tenantId}-${topic}`,
-                messages: [{ value: serializedMessage }],
-            });
-            loggingUtil.log(`Avro message sent to topic ${tenantId}-${topic} successfully.`);
-        } catch (error) {
-            loggingUtil.error(`Failed to send Avro message to topic ${tenantId}-${topic}`, error);
-            throw error;
-        }
-    }
-
-    // ...other methods
-
-    // Implement Avro deserialization and message reception logic here
-    async receiveAvroMessage(tenantId, topic) {
-        // Implement Avro deserialization and message reception logic here
-    }
-
-    // Implement tracing message logic here
-    async traceMessage(tenantId, topic, messages, traceId) {
-        const tenantTopic = `${tenantId}-${topic}`;
-        const tracedMessages = messages.map(msg => ({
-            traceId,
-            value: JSON.stringify(msg),
-        }));
-
-        try {
-            await this.producer.send({
-                topic: tenantTopic,
-                messages: tracedMessages,
+                messages: [{ value: encodedMessage }],
                 compression: CompressionTypes.GZIP,
             });
-            loggingUtil.log(`Traced message(s) sent to topic ${tenantTopic} successfully.`);
+            logger.info(`Avro message sent successfully for tenantId: ${tenantId}`);
         } catch (error) {
-            loggingUtil.error(`Failed to send traced message(s) to topic ${tenantTopic}`, error);
+            logger.error(`Failed to send Avro message for tenantId: ${tenantId}`, error);
             throw error;
         }
     }
-
-    // ...other methods
 }
 
-// Export the Advanced Kafka Producer Service
-module.exports = AdvancedKafkaProducerService;
+module.exports = KafkaProducerService;
