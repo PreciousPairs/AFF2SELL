@@ -1,25 +1,28 @@
-// utils/errorHandling.js
+const logger = require('./logger'); // Import the logger configured earlier
+const { moveToDLQ } = require('../services/deadLetterQueueService'); // Assume a service for handling DLQ
 
-const { sendNotification } = require('./notificationService');
+async function handleProcessingError(priceInfo, error) {
+    logger.error(`Error processing message: ${JSON.stringify(priceInfo)}`, error);
 
-function logError(error, context) {
-    console.error('Error occurred:', error);
-    // Log error details with context
-}
+    const maxRetries = 3;
+    let attempt = 0;
+    let success = false;
 
-function sendAlert(error, context) {
-    const errorMessage = `Error occurred: ${error.message}`;
-    sendNotification(errorMessage); // Example: Sending notification to relevant stakeholders
-}
+    while (attempt < maxRetries && !success) {
+        try {
+            await processCompetitorPrice(priceInfo); // Assume an asynchronous function
+            logger.info(`Successful processing after retry for product ID: ${priceInfo.productId}`);
+            success = true; // Mark as success to exit loop
+        } catch (retryError) {
+            attempt++;
+            logger.warn(`Retry ${attempt} for product ID: ${priceInfo.productId} failed. Error: ${retryError.message}`);
+        }
+    }
 
-async function retryOperation(operation, context) {
-    try {
-        await operation();
-    } catch (error) {
-        logError(error, context);
-        sendAlert(error, context);
-        throw error; // Rethrow error for further handling
+    if (!success) {
+        logger.error(`Max retries reached for product ID: ${priceInfo.productId}. Moving to DLQ.`);
+        await moveToDLQ(priceInfo); // Function to move the message to a Dead Letter Queue for further investigation
     }
 }
 
-module.exports = { logError, sendAlert, retryOperation };
+module.exports = { handleProcessingError };
