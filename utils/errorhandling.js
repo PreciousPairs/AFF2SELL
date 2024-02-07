@@ -1,31 +1,28 @@
-const logger = require('./logger'); // Import the logger configured earlier
-const { moveToDLQ } = require('../services/deadLetterQueueService'); // Assume a service for handling DLQ
+const logger = require('./logger'); // Custom logger module for structured logging
 
-async function handleProcessingError(priceInfo, error) {
-    logger.error(`Error processing message: ${JSON.stringify(priceInfo)}`, error);
-
-    const maxRetries = 3;
+// This function attempts to reprocess a message with a specified retry limit.
+// If processing fails after all retries, the message is moved to a DLQ.
+async function handleProcessingError(processFunction, message, maxRetries = 3) {
     let attempt = 0;
-    let success = false;
-
-    while (attempt < maxRetries && !success) {
+    while (attempt < maxRetries) {
         try {
-            await processCompetitorPrice(priceInfo); // Assume an asynchronous function
-            logger.info(`Successful processing after retry for product ID: ${priceInfo.productId}`);
-            success = true; // Mark as success to exit loop
-        } catch (retryError) {
+            // Attempt to process the message
+            await processFunction(message);
+            logger.info(`Message processed successfully on attempt ${attempt + 1}: ${JSON.stringify(message)}`);
+            return; // Exit the loop and function upon successful processing
+        } catch (error) {
             attempt++;
-            logger.warn(`Retry ${attempt} for product ID: ${priceInfo.productId} failed. Error: ${retryError.message}`);
+            logger.warn(`Processing attempt ${attempt} failed: ${error.message}`, { message });
+
+            // Check if max retries have been reached
+            if (attempt >= maxRetries) {
+                logger.error(`Max retries reached, moving message to DLQ: ${JSON.stringify(message)}`);
+                await moveToDLQ(message); // Move the message to a DLQ for further investigation
+                break; // Exit the loop after moving the message to DLQ
+            }
         }
     }
-
-    if (!success) {
-        logger.error(`Max retries reached for product ID: ${priceInfo.productId}. Moving to DLQ.`);
-        await moveToDLQ(priceInfo); // Function to move the message to a Dead Letter Queue for further investigation
-    }
 }
-export const errorHandler = (error: Error, customMessage: string = 'An error occurred'): void => {
-  logger.error(`${customMessage}: ${error.message}`);
-  // Further actions like sending error details to a monitoring service can be added here
-};
+
+// Export the error handling function for use in message processing scripts
 module.exports = { handleProcessingError };
