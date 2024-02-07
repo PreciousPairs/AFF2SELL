@@ -1,5 +1,9 @@
-// /config/mongodbConfig.ts
 import mongoose from 'mongoose';
+
+// Import your models here
+import UserModel from './models/User';
+import ProductModel from './models/Product';
+// Import any other models as needed
 
 const connectDB = async (): Promise<void> => {
     const dbURI: string = process.env.MONGODB_URI || 'mongodb://localhost:27017/myDatabase'; // Default URI
@@ -32,4 +36,9 @@ const connectDB = async (): Promise<void> => {
     });
 };
 
-export default connectDB;
+// Initialize models
+const User = UserModel(mongoose);
+const Product = ProductModel(mongoose);
+// Initialize any other models as needed
+
+export { connectDB, User, Product };
