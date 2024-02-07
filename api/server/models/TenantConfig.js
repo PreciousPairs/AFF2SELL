@@ -1,5 +1,3 @@
-// /api/server/models/TenantConfig.js
-
 const mongoose = require('mongoose');
 const encrypt = require('mongoose-encryption');
 const dotenv = require('dotenv');
