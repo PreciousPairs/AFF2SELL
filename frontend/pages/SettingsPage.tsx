@@ -1,14 +1,21 @@
-import React, { useEffect, useState, FormEvent } from 'react';
+import React, { useEffect, useState, FormEvent, ChangeEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TenantService } from '../services';
 import { useTenant } from '../hooks/useTenant';
+import Notifier from '../components/common/Notifier';
 
-// Extending the Settings interface to cover more complex scenarios
+interface CustomField {
+  fieldId: string;
+  value: string | number | boolean;
+  type: 'text' | 'number' | 'checkbox';
+}
+
 interface Settings {
-  theme: string;
+  theme: 'light' | 'dark';
   notificationsEnabled: boolean;
   email: string;
   pageSize: number;
-  customFields: Array<{ fieldId: string; value: string | number | boolean }>;
+  customFields: CustomField[];
 }
 
 const defaultSettings: Settings = {
@@ -16,54 +23,67 @@ const defaultSettings: Settings = {
   notificationsEnabled: true,
   email: '',
   pageSize: 10,
-  customFields: [],
+  customFields: [
+    { fieldId: 'customNotification', value: true, type: 'checkbox' },
+    { fieldId: 'dashboardLayout', value: 'grid', type: 'text' }
+  ],
 };
 
 const SettingsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { tenant } = useTenant();
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!tenant.id) navigate('/login'); // Redirect if tenant is not identified
+
     const fetchSettings = async () => {
       setIsLoading(true);
       try {
         const fetchedSettings = await TenantService.fetchSettings(tenant.id);
-        setSettings(fetchedSettings);
+        setSettings(fetchedSettings || defaultSettings);
         setError(null);
       } catch (err) {
         setError('Failed to fetch settings. Please try again.');
+        Notifier.notifyError('Failed to fetch settings.');
       } finally {
         setIsLoading(false);
       }
     };
-    if (tenant.id) fetchSettings();
-  }, [tenant.id]);
+
+    fetchSettings();
+  }, [tenant.id, navigate]);
 
   const handleFormSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
+
     try {
       await TenantService.updateSettings(tenant.id, settings);
-      alert('Settings updated successfully!');
-      setError(null);
+      Notifier.notifySuccess('Settings updated successfully!');
     } catch (err) {
       setError('Failed to update settings. Please try again.');
+      Notifier.notifyError('Failed to update settings.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, checked, type } = event.target;
-    setSettings(prevSettings => ({
-      ...prevSettings,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+    if (name.startsWith('customField_')) {
+      const fieldId = name.split('_')[1];
+      handleCustomFieldChange(fieldId, type === 'checkbox' ? checked : value);
+    } else {
+      setSettings(prevSettings => ({
+        ...prevSettings,
+        [name]: type === 'checkbox' ? checked : value,
+      }));
+    }
   };
 
-  // Dynamic field handler for customFields array
   const handleCustomFieldChange = (fieldId: string, value: string | number | boolean) => {
     setSettings(prevSettings => ({
       ...prevSettings,
@@ -77,9 +97,10 @@ const SettingsPage: React.FC = () => {
   if (error) return <p>Error loading settings: {error}</p>;
 
   return (
-    <div>
+    <div className="settings-page">
       <h1>Settings</h1>
       <form onSubmit={handleFormSubmit}>
+        {/* Theme Selection */}
         <div>
           <label htmlFor="theme">Theme:</label>
           <select name="theme" value={settings.theme} onChange={handleChange}>
@@ -87,39 +108,33 @@ const SettingsPage: React.FC = () => {
             <option value="dark">Dark</option>
           </select>
         </div>
-        <div>
-          <label htmlFor="email">Email:</label>
-          <input type="email" name="email" value={settings.email} onChange={handleChange} required />
-        </div>
-        <div>
-          <label>
-            <input
-              type="checkbox"
-              name="notificationsEnabled"
-              checked={settings.notificationsEnabled}
-              onChange={handleChange}
-            />
-            Enable Notifications
-          </label>
-        </div>
-        <div>
-          <label htmlFor="pageSize">Page Size:</label>
-          <input type="number" name="pageSize" value={settings.pageSize} onChange={handleChange} min="1" max="100" />
-        </div>
-        {settings.customFields.map(field => (
-          <div key={field.fieldId}>
-            <label htmlFor={field.fieldId}>{field.fieldId}:</label>
-            <input
-              type="text"
-              name={field.fieldId}
-              value={field.value.toString()}
-              onChange={(e) => handleCustomFieldChange(field.fieldId, e.target.value)}
-            />
+        
+        {/* Other Settings Fields */}
+        
+        {/* Dynamic Custom Fields */}
+        {settings.customFields.map((field, index) => (
+          <div key={index}>
+            <label htmlFor={`customField_${field.fieldId}`}>{field.fieldId}:</label>
+            {field.type === 'checkbox' ? (
+              <input
+                type="checkbox"
+                name={`customField_${field.fieldId}`}
+                checked={Boolean(field.value)}
+                onChange={handleChange}
+              />
+            ) : (
+              <input
+                type={field.type}
+                name={`customField_${field.fieldId}`}
+                value={String(field.value)}
+                onChange={handleChange}
+              />
+            )}
           </div>
         ))}
+
         <button type="submit" disabled={isLoading}>Save Settings</button>
       </form>
-      {error && <p className="error">{error}</p>}
     </div>
   );
 };
