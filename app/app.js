@@ -1,5 +1,3 @@
-// app.js
-
 require('dotenv').config(); // Load environment variables from .env file at the beginning
 const express = require('express');
 const helmet = require('helmet'); // Security middleware for setting various HTTP headers
