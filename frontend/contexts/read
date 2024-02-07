@@ -1,0 +1,190 @@
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+
+// Define the types for notifications
+type NotificationType = 'error' | 'info' | 'success';
+interface Notification { id: number; type: NotificationType; message: string; }
+interface NotificationContextType { notify: (type: NotificationType, message: string) => void; }
+
+// Create a context for notifications
+const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+
+// Counter to generate unique IDs for notifications
+let nextId = 0;
+
+// NotificationProvider component to manage notifications
+export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    // State to store notifications
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+
+    // Function to add a new notification
+    const notify = (type: NotificationType, message: string) => {
+        // Create a new notification object with a unique ID
+        const notification: Notification = { id: nextId++, type, message };
+        // Add the notification to the array of notifications
+        setNotifications((prevNotifications) => [...prevNotifications, notification]);
+        // Remove the notification after 5 seconds
+        setTimeout(() => {
+            setNotifications((prevNotifications) => prevNotifications.filter((n) => n.id !== notification.id));
+        }, 5000);
+    };
+
+    // Render the NotificationProvider with children and notification context value
+    return (
+        <NotificationContext.Provider value={{ notify }}>
+            {children}
+        </NotificationContext.Provider>
+    );
+};
+
+// Custom hook to use notifications
+export const useNotifications = () => {
+    // Get the notification context value
+    const context = useContext(NotificationContext);
+    // Throw an error if used outside of NotificationProvider
+    if (!context) {
+        throw new Error('useNotifications must be used within a NotificationProvider');
+    }
+    // Return the notification context value
+    return context;
+};
+
+// Filename: /models/Tenant.js
+import mongoose from 'mongoose';
+
+const tenantSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  apiKey: { type: String, required: true },
+  callbackUrl: { type: String },
+  emailNotificationsEnabled: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true }
+}, { timestamps: true });
+
+export default mongoose.model('Tenant', tenantSchema);
+
+// Filename: /frontend/contexts/WebSocketContext.tsx
+import React, { createContext, useContext, useEffect, useState } from 'react';
+
+const WebSocketContext = createContext<any>(null);
+
+export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [socket, setSocket] = useState<WebSocket | null>(null);
+    const [messages, setMessages] = useState<any[]>([]);
+
+    useEffect(() => {
+        // Initialize WebSocket connection
+        const ws = new WebSocket('wss://your-api-websocket-url');
+        setSocket(ws);
+
+        ws.onmessage = (message) => {
+            const data = JSON.parse(message.data);
+            setMessages((prevMessages) => [...prevMessages, data]);
+        };
+
+        return () => {
+            ws.close();
+        };
+    }, []);
+
+    return (
+        <WebSocketContext.Provider value={{ messages }}>
+            {children}
+        </WebSocketContext.Provider>
+    );
+};
+
+export const useWebSocket = () => useContext(WebSocketContext);
+
+// Filename: /models/User.js
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+import validator from 'validator';
+
+// Notification settings sub-schema
+const NotificationSettingsSchema = new mongoose.Schema({
+  email: { type: Boolean, default: true },
+  sms: { type: Boolean, default: false },
+  push: { type: Boolean, default: false },
+}, { _id: false });
+
+// User preferences sub-schema
+const PreferencesSchema = new mongoose.Schema({
+  notifications: NotificationSettingsSchema,
+  theme: { type: String, default: 'light' },
+  language: { type: String, default: 'en' },
+  accessibility: {
+    highContrast: { type: Boolean, default: false },
+    textToSpeech: { type: Boolean, default: false },
+  },
+  contentPreferences: {
+    categories: [String],
+    tags: [String],
+  },
+  privacy: {
+    profileVisibility: { type: String, default: 'public', enum: ['public', 'private', 'friends'] },
+    dataCollectionConsent: { type: Boolean, default: true },
+  },
+  dashboardLayout: {
+    layoutType: { type: String, default: 'standard', enum: ['standard', 'compact', 'detailed'] },
+    widgets: [{ widgetName: String, enabled: Boolean }],
+  },
+}, { _id: false });
+
+// Main user schema
+const userSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    required: [true, 'Email is required'],
+    unique: true,
+    lowercase: true,
+    validate: [validator.isEmail, 'Email is invalid'],
+  },
+  password: {
+    type: String,
+    required: [true, 'Password is required'],
+  },
+  role: {
+    type: String,
+    required: true,
+    enum: ['admin', 'user', 'editor'],
+  },
+  verified: { type: Boolean, default: false },
+  refreshToken: String,
+  preferences: PreferencesSchema,
+  accountStatus: {
+    type: String,
+    enum: ['active', 'suspended', 'deleted'],
+    default: 'active',
+  },
+  lastLogin: Date,
+}, {
+  timestamps: true,
+});
+
+// Pre-save middleware for password hashing
+userSchema.pre('save', async function (next) {
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 8);
+  }
+  next();
+});
+
+// Pre-update middleware for password hashing
+userSchema.pre('findOneAndUpdate', async function (next) {
+  const update = this.getUpdate();
+  if (update.password) {
+    update.password = await bcrypt.hash(update.password, 8);
+  }
+  next();
+});
+
+// Method to compare candidate password with user's hashed password
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Static method to find active user by email
+userSchema.statics.findByEmailAndActive = async function (email) {
+  return this.findOne({ email, accountStatus: 'active' });
+};
+
+export default mongoose.model('User', userSchema);
