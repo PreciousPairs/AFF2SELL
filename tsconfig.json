@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "es2020", // Modern target for better support
+    "module": "commonjs", // Suitable for Node.js backend
+    "lib": ["dom", "dom.iterable", "esnext"], // Include DOM libs for frontend and ESNext for latest features
+    "allowJs": true, // Allow JavaScript files to be compiled
+    "skipLibCheck": true, // Skip type checking of declaration files
+    "esModuleInterop": true, // Enable default imports from modules with no default export
+    "noImplicitAny": true, // Raise error on expressions and declarations with an implied 'any' type
+    "strictNullChecks": true, // Enable strict null checks
+    "strict": true, // Enable all strict type-checking options
+    "forceConsistentCasingInFileNames": true, // Disallow inconsistently-cased references to the same file
+    "moduleResolution": "node", // Resolve modules using Node.js style
+    "baseUrl": ".", // Base directory to resolve non-relative module names
+    "paths": {
+      "*": ["node_modules/*"],
+      "src/*": ["src/*"] // Alias for src directory
+    },
+    "outDir": "./dist", // Redirect output structure to the directory
+    "jsx": "react-jsx", // Support JSX in .tsx files
+    "experimentalDecorators": true, // Enable experimental support for ES decorators
+    "emitDecoratorMetadata": true, // Emit design-type metadata for decorated declarations in source
+    "resolveJsonModule": true // Include modules imported with '.json' extension
+  },
+  "include": [
+    "src/**/*", // Include all files in src for both backend and frontend
+    "tests/**/*", // Include test files
+    "controllers/**/*.ts", // Include TypeScript files in controllers
+    "services/**/*.ts", // Include TypeScript files in services
+    "models/**/*.ts", // Include TypeScript models
+    "utils/**/*.ts", // Include utility functions
+    "api/**/*.ts", // Include API related TypeScript files
+    "config/**/*.ts", // Configuration files
+    "frontend/**/*.tsx" // Include frontend React components
+  ],
+  "exclude": [
+    "node_modules", // Exclude node_modules from compilation
+    "**/*.spec.ts", // Exclude test files from compilation output
+    "dist" // Exclude dist directory to prevent re-compilation of compiled files
+  ]
+}
