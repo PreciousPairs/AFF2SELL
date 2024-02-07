@@ -1,4 +1,3 @@
-// /api/server/middleware/tenantMiddleware.js
 const TenantConfig = require('../models/TenantConfig');
 const NodeCache = require('node-cache');
 const crypto = require('crypto');
