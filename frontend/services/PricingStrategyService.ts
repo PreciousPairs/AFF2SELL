@@ -1,7 +1,8 @@
-// /frontend/services/PricingStrategyService.ts
+// Import axios for making HTTP requests
 import axios from 'axios';
 
-const API_BASE_URL = '/api/strategies'; // Adjust based on your actual API endpoint
+// Base URL for the pricing strategy service
+const API_BASE_URL = '/api/strategies';
 
 export const PricingStrategyService = {
     async fetchStrategies() {
